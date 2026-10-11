@@ -1,0 +1,14 @@
+{
+  "name": "irenic-consulting-website",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/check.mjs",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler preview"
+  },
+  "engines": { "node": ">=22" },
+  "devDependencies": { "wrangler": "^4.135.0" }
+}

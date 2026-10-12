@@ -1,39 +1,58 @@
-# Consulting inquiries — staged, not active
+# Consulting inquiries — Cloudflare only, staged
 
-This is prepared source, not a deployed submission system. The live website still prepares an email draft. The handler and form integration are present, but direct submission stays disabled until the Google deployment, required keys, and explicit enable flag are configured. There are no live credentials or Turnstile keys in this repository.
+Consulting does not use either existing Google Workspace, Apps Script project, Google Sheet, or Foundation donor database. The Consulting Google script has been removed from this repository. Do not paste the earlier script into either Workspace.
 
-## Result after activation
+The website currently stays in email-draft mode. Direct submission requires its own Cloudflare D1 database, Turnstile configuration, internal email notification binding, and an explicit activation flag. No live resources, inboxes, credentials, or billing changes have been configured by this source update.
 
-1. A visitor submits a business inquiry on the Consulting site.
-2. Cloudflare validates the request and its Turnstile token.
-3. A dedicated Consulting Google Apps Script durably saves the inquiry to its own private Google Sheet. Repeat submission IDs do not create another row.
-4. An authorized five-minute timer sends a notification directly to the owning Google inbox. Sending directly avoids the forwarding-loop suppression observed during the email test.
-5. Krystal reviews the lead, responds, and confirms scope, pricing, proposal, and scheduling.
+## After activation
 
-No automatic emails to visitors, calendar booking, quotes, contracts, marketing enrollment, or sales follow-up emails. Status, follow-up date, and notes in the lead log support manual review. This workflow collects business inquiries only, not clinical intake or confidential employee records.
+1. A visitor submits an inquiry; Cloudflare validates the request and Turnstile verification.
+2. The existing Consulting Worker saves it in the separate `irenic-consulting-inquiries` D1 database.
+3. The website confirms receipt only after the database confirms the record.
+4. Cloudflare sends a notification to the fixed owner inbox. The visitor receives no automatic email.
+5. Krystal reviews the inquiry and responds using the existing Consulting email workflow. Scope, pricing, proposals, and scheduling stay manual.
 
-## Google setup (no Terminal commands)
+The API exposes no inquiry list or individual-record read endpoint. Review the log through the signed-in Cloudflare D1 dashboard. No confidential employee records or clinical intake data should be collected here.
 
-1. In an existing Google account that should own the Consulting inquiry log and send internal notifications, open Google Apps Script and create a NEW project named **Irenic Consulting — Business Inquiries**. A separate Consulting Google Workspace is not required. Do not replace either existing Therapeutic or Foundation script.
-2. Paste the entire `google-apps-script/Code.gs` file into `Code.gs` and save.
-3. Select `setupConsultingInquiries` from the function selector and click Run. Complete Google's authorization. This creates a private lead spreadsheet, a random shared secret in Script Properties, and one timer trigger. Re-running setup reuses these resources.
-4. In Project Settings → Script Properties, `SHARED_SECRET` is the generated credential, `SHEET_ID` points to the log, and `NOTIFICATION_EMAIL` defaults to the executing Google account's direct inbox. Review that inbox and change it to another approved direct business inbox if needed. Copy the shared secret only into the matching encrypted Cloudflare secret; do not place it in chat, frontend source, or GitHub. Do not change it after copying without updating both ends.
-5. Deploy → New deployment → Web app. Execute as **Me**; Who has access: **Anyone**, if permitted by the Google account’s settings. The shared secret authenticates the server-to-server endpoint. Keep the resulting `/exec` URL for the Cloudflare configuration. The script owner remains responsible for quotas and sheet access.
+## Browser setup — first create the separate log
 
-Only internal notifications are emailed, using the executing Google account's authorized sending identity and the business display name. The visitor’s email is the reply-to address. Visitors receive confirmation on the website after their inquiry is saved; they receive no automatic acknowledgement email. Krystal responds personally through the existing Consulting email workflow.
+1. In the existing Cloudflare account, open **Storage & databases → D1 SQL database** (or search the dashboard for **D1**).
+2. Select **Create database**, name it **irenic-consulting-inquiries**, and create it.
+3. Open this database’s **Console**. Paste the entire `schema.sql` file and select **Execute**. The schema creates a Consulting-only table and preserves any existing rows if run again.
+4. Keep the database ID for the repository’s Wrangler configuration. It is an identifier, not a secret. The code uses the binding name **CONSULTING_DB**. Do not select the Foundation database.
+5. Before activation, add the real database ID and binding to the tracked Wrangler configuration so subsequent GitHub builds retain it. A dashboard binding alone is not the final source configuration.
 
-## Cloudflare activation prerequisites
+## Internal notification prerequisites — check availability before changing email
 
-1. Create a Managed Turnstile widget in the existing Cloudflare account for `irenicconsulting.com` and `www.irenicconsulting.com`. Include the existing `irenic-consulting-website.krystal-146.workers.dev` hostname only if testing there.
-2. In the existing **irenic-consulting-website** Worker, add encrypted secrets `GAS_WEB_APP_URL`, `GAS_SHARED_SECRET`, and `TURNSTILE_SECRET_KEY`. Add the public variable `TURNSTILE_SITE_KEY`. Keep `INQUIRIES_ENABLED` unset until setup and tests are ready.
-3. The existing website integration fetches `/api/inquiry-config`, renders Turnstile only in enabled submission mode, validates the form, and sends to the same-origin `/api/inquiries` endpoint. Static pages continue to use the ASSETS binding; only `/api/*` routes invoke the handler. Existing custom domains and redirects are retained.
-4. On incomplete setup or challenge loading failure, the contact form stays in its existing email-draft mode. Failed requests retain form contents and offer a retry or direct email. Submission IDs are retained across retry attempts.
-5. The updated privacy notice describes both draft mode and direct business submission. No clinical data or employee records should be submitted.
-6. Inspect the authenticated Google deployment and private Sheet setup before enabling the form.
-7. Enable `INQUIRIES_ENABLED=true` only after the full source integration is ready. Submit one clearly marked business test lead and verify a saved row, website confirmation, owner notification, no email to the visitor, duplicate suppression, and failure behavior. Do not test with real confidential employee or clinical information.
+Cloudflare’s documented Email Service supports sending to verified destination inboxes. It still requires a sender domain onboarded to Email Service. General outbound Email Sending is a beta feature on Workers Paid; sends to verified destinations are documented as free on all plans. This does not establish that the current account can complete sender onboarding without a plan change.
 
-## Exceptions and follow-up
+Inspect the existing account’s Email Service options before proceeding. Do not purchase a plan, replace the existing root MX/SPF records, enable apex Email Routing, or use an undocumented workaround as part of this setup. The current Mailgun/Squarespace forwarding for `info@irenicconsulting.com` already works and must be preserved.
 
-The Sheet records owner notification state. Earlier logs with acknowledgement columns remain compatible, but those columns are never used to send visitor emails. Quota shortages leave rows queued. Failed mail calls are retried up to three attempts. A row stuck at `sending` needs human review; it is not automatically resent because an interrupted execution might already have sent mail. A successful MailApp call is not proof of inbox delivery. Monitor bounces and the log. The script's five-minute queue timer is operational email delivery, not a marketing campaign.
+If outbound sender onboarding is available without changing root mail routing, use the dedicated sender subdomain **notifications.irenicconsulting.com** and sender **inquiries@notifications.irenicconsulting.com**. Review every proposed DNS record and any billing requirement first. Sending-domain onboarding should affect this subdomain and its bounce/authentication records, rather than replacing root incoming-mail records. If the dashboard requires a paid plan or a root mail migration, stop before applying it and choose a reviewed alternative; keep email-draft mode active meanwhile.
 
-Google account settings or quotas may prevent public web-app deployment or mail sending. If access is blocked, keep the existing email draft workflow and resolve the account settings rather than exposing credentials or weakening account protections.
+Once supported onboarding is confirmed:
+
+- Verify the approved direct owner inbox as a destination. It may receive Consulting notifications without owning a Consulting Workspace, Apps Script, or spreadsheet.
+- Add a restricted **CONSULTING_EMAIL** send binding to the existing Consulting Worker, allowing only that owner destination and the Consulting notification sender. Record the same restriction in Wrangler.
+- Set **NOTIFICATION_EMAIL** to that fixed inbox and **NOTIFICATION_FROM** to `inquiries@notifications.irenicconsulting.com`. Form input can only set the reply-to address; it can never choose the notification recipient.
+- Configure a five-minute Cron Trigger (`*/5 * * * *`) in the tracked Wrangler configuration after bindings are ready. The Worker implements the scheduled handler already. Until then, no retry timer is attached.
+
+## Turnstile and activation
+
+Create a Managed Turnstile widget for `irenicconsulting.com` and `www.irenicconsulting.com`; include `irenic-consulting-website.krystal-146.workers.dev` only if testing there. In the existing Consulting Worker, set the encrypted secret **TURNSTILE_SECRET_KEY** and public variable **TURNSTILE_SITE_KEY**. Google endpoint/secret variables are not used and should not be added.
+
+Keep **INQUIRIES_ENABLED** unset until the database schema, tracked bindings, notification sender, destination, and cron trigger are ready. Then enable it and submit a clearly labeled fictional business inquiry. Verify the saved row, website confirmation, one owner notification, no visitor email, retries without duplicate rows, and delivery-failure handling. Actual inbox delivery requires this live test; local checks do not establish it.
+
+## Failure behavior and review
+
+Email failures never discard a saved inquiry. Known mail rejections are recorded and retried up to three attempts. An interrupted or uncertain send remains **sending** for manual review instead of being resent automatically. **sent** means the service returned a message ID, not proof of inbox delivery. Monitor notification status, provider logs, and bounces. Failed rows after three attempts and rows stuck at **sending** require owner review.
+
+Submission IDs prevent duplicate records. Reusing an ID with different inquiry content is rejected; the browser allows a new submission after explaining that an earlier version was already received. SQL values use bound parameters. Request limits, same-origin validation, and Turnstile checks remain active. No credentials, inquiry contents, or raw provider errors are logged or returned to the visitor.
+
+## References
+
+- https://developers.cloudflare.com/d1/get-started/
+- https://developers.cloudflare.com/email-service/api/send-emails/workers-api/
+- https://developers.cloudflare.com/email-service/configuration/send-bindings/
+- https://developers.cloudflare.com/email-service/configuration/subdomains/
+- https://developers.cloudflare.com/email-service/platform/pricing/

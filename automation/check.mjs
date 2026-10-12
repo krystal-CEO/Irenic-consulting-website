@@ -1,20 +1,45 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import vm from 'node:vm';
 import { handle, validateLead, isConfigured } from './worker.mjs';
 
-const lead = { id: '5b4d7ea5-44c3-4f6c-82d6-8e809d9404f8', name: '=TEST', email: 'example@example.org', organization: 'TEST organization', role: 'Manager', service: 'Leadership development', size: '11–50', timeframe: 'Exploring options', message: '=IMPORTXML("example", "x")' };
+import { DatabaseSync } from 'node:sqlite';
+import { notifyInquiry, processPendingNotifications } from './worker.mjs';
+
+const sqlite = new DatabaseSync(':memory:');
+sqlite.exec(await readFile(new URL('./schema.sql', import.meta.url), 'utf8'));
+let failStorage = false;
+const DB = {
+  prepare(sql) {
+    let values = [];
+    const stmt = {
+      bind(...args) { values = args; return stmt; },
+      async run() { if (failStorage) throw new Error('synthetic storage failure'); const result = sqlite.prepare(sql).run(...values); return { success: true, meta: { changes: Number(result.changes) } }; },
+      async first() { return sqlite.prepare(sql).get(...values) || null; },
+      async all() { return { success: true, results: sqlite.prepare(sql).all(...values) }; }
+    };
+    return stmt;
+  }
+};
+let sent = [];
+let emailError;
+const lead = { id: '5b4d7ea5-44c3-4f6c-82d6-8e809d9404f8', name: '=TEST', email: 'example@example.org', organization: "TEST's organization", role: 'Manager', service: 'Leadership development', size: '11–50', timeframe: 'Exploring options', message: '=IMPORTXML("example", "x")' };
 const origin = 'https://irenicconsulting.com';
-const env = { INQUIRIES_ENABLED: 'true', TURNSTILE_SITE_KEY: 'test-public', TURNSTILE_SECRET_KEY: 'test-private', GAS_SHARED_SECRET: 'a'.repeat(36), GAS_WEB_APP_URL: 'https://script.google.com/macros/s/TEST/exec', ASSETS: { fetch: async () => new Response('static page') } };
+const env = { INQUIRIES_ENABLED: 'true', TURNSTILE_SITE_KEY: 'test-public', TURNSTILE_SECRET_KEY: 'test-private', CONSULTING_DB: DB,
+  NOTIFICATION_EMAIL: 'owner@example.org', NOTIFICATION_FROM: 'inquiries@notifications.irenicconsulting.com',
+  CONSULTING_EMAIL: { async send(message) { if (emailError) throw emailError; sent.push(message); return { messageId: 'synthetic-' + sent.length }; } },
+  ASSETS: { fetch: async () => new Response('static page') } };
 let calls = [];
 const goodFetch = async (url, options) => {
   calls.push({ url, body: JSON.parse(options.body) });
-  return Response.json(url.includes('siteverify') ? { success: true, hostname: 'irenicconsulting.com', action: 'consulting_inquiry' } : { status: 'accepted', id: lead.id });
+  assert.ok(url.includes('siteverify'), 'Only Turnstile uses an external HTTP request');
+  return Response.json({ success: true, hostname: 'irenicconsulting.com', action: 'consulting_inquiry' });
 };
 const request = (body = { ...lead, turnstileToken: 'test-token' }, extra = {}) => new Request(origin + '/api/inquiries', { method: 'POST', headers: { origin, 'content-type': 'application/json', ...extra }, body: JSON.stringify(body) });
 assert.equal(isConfigured({}), false);
 assert.equal(isConfigured({ ...env, INQUIRIES_ENABLED: 'false' }), false);
-assert.equal(isConfigured({ ...env, GAS_WEB_APP_URL: 'https://example.org/exec' }), false);
+assert.equal(isConfigured({ ...env, CONSULTING_DB: undefined }), false);
+assert.equal(isConfigured({ ...env, CONSULTING_EMAIL: undefined }), false);
+assert.equal(isConfigured({ ...env, NOTIFICATION_FROM: 'inquiries@irenix.org' }), false);
 assert.equal((await handle(request(), { ...env, INQUIRIES_ENABLED: 'false' }, goodFetch)).status, 503);
 assert.equal(calls.length, 0);
 assert.equal((await handle(request(undefined, { origin: 'https://other.example' }), env, goodFetch)).status, 403);
@@ -30,89 +55,50 @@ assert.equal((await handle(request(), env, invalidAction)).status, 400);
 const accepted = await handle(request(), env, goodFetch);
 assert.equal(accepted.status, 200);
 assert.equal((await accepted.json()).id, lead.id);
-assert.equal(calls.length, 2);
-assert.equal(calls[1].body.token, env.GAS_SHARED_SECRET);
-assert.equal(calls[1].body.turnstileToken, undefined);
-const badBackend = async (url) => Response.json(url.includes('siteverify') ? { success: true, hostname: 'irenicconsulting.com', action: 'consulting_inquiry' } : { status: 'save_failed' });
-assert.equal((await handle(request(), env, badBackend)).status, 502);
+assert.equal(calls.length, 1);
+const row = () => sqlite.prepare('SELECT * FROM consulting_inquiries WHERE id = ?').get(lead.id);
+assert.equal(row().organization, lead.organization);
+assert.equal(row().goals, lead.message);
+assert.equal(row().notification_state, 'sent');
+assert.equal(sent.length, 1);
+assert.equal(sent[0].to, env.NOTIFICATION_EMAIL);
+assert.equal(sent[0].replyTo, lead.email);
+assert.equal((await handle(request(), env, goodFetch)).status, 200);
+assert.equal(sqlite.prepare('SELECT count(*) AS count FROM consulting_inquiries').get().count, 1);
+assert.equal(sent.length, 1);
+assert.equal((await handle(request({ ...lead, message: 'changed', turnstileToken: 'test-token' }), env, goodFetch)).status, 409);
+assert.equal(row().goals, lead.message);
+assert.equal(sent.length, 1);
 assert.equal(await (await handle(new Request(origin + '/'), env)).text(), 'static page');
-
-// Exercise the Google code with private synthetic in-memory rows; no Google writes or email.
-const rows = [];
-const properties = { SHARED_SECRET: env.GAS_SHARED_SECRET, SHEET_ID: 'synthetic-only', NOTIFICATION_EMAIL: 'owner@example.org' };
-let quota = 0;
-let emails = [];
-let failNotification = false;
-let failStorage = false;
-const sheet = {
-  getLastRow: () => rows.length,
-  getLastColumn: () => rows[0].length,
-  appendRow: (row) => { if (failStorage) throw new Error('synthetic'); rows.push(row); },
-  getRange: (row, col, count = 1, width = 1) => ({
-    getValues: () => rows.slice(row - 1, row - 1 + count).map(r => r.slice(col - 1, col - 1 + width)),
-    setValue: (value) => { rows[row - 1][col - 1] = value; },
-    createTextFinder: (id) => ({ matchEntireCell: () => ({ findNext: () => rows.slice(1).find(r => r[0] === id) || null }) })
-  })
-};
-const context = vm.createContext({
-  PropertiesService: { getScriptProperties: () => ({ getProperty: (key) => properties[key] }) },
-  LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
-  SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }), flush() {} },
-  ContentService: { MimeType: { JSON: 'json' }, createTextOutput: (value) => ({ setMimeType: () => JSON.parse(value) }) },
-  MailApp: { getRemainingDailyQuota: () => quota, sendEmail: (email) => { if (failNotification) throw new Error('synthetic'); emails.push(email); } },
-  console: { error() {}, log() {} }
-});
-vm.runInContext(await readFile(new URL('./google-apps-script/Code.gs', import.meta.url), 'utf8'), context);
-rows.push(Array.from(context.HEADERS));
-const post = (data) => context.doPost({ postData: { contents: JSON.stringify(data) } });
-assert.equal(post({ ...lead, token: 'wrong' }).status, 'unauthorized');
-assert.equal(rows.length, 1);
-assert.equal(post({ ...lead, token: env.GAS_SHARED_SECRET }).status, 'accepted');
-assert.equal(rows.length, 2);
-assert.equal(rows[1][2][0], "'");
-assert.equal(rows[1][9][0], "'");
-assert.equal(post({ ...lead, token: env.GAS_SHARED_SECRET }).duplicate, true);
-assert.equal(rows.length, 2);
-context.processPendingMail();
-assert.equal(emails.length, 0);
-assert.equal(rows[1][11], 'queued');
-quota = 5;
-failNotification = true;
-context.processPendingMail();
-assert.equal(rows[1][11], 'failed');
-assert.equal(rows[1][12], 1);
-assert.equal(emails.length, 0);
-failNotification = false;
-context.processPendingMail();
-assert.equal(rows[1][11], 'sent');
-assert.equal(emails.length, 1);
-assert.equal(emails[0].to, properties.NOTIFICATION_EMAIL);
-assert.equal(emails[0].replyTo, lead.email);
-context.processPendingMail();
-assert.equal(emails.length, 1);
-rows[1][11] = 'sending';
-context.processPendingMail();
-assert.equal(emails.length, 1);
-// A spreadsheet from the earlier setup must not cause queued visitor mail to send.
-const legacyHeaders = [...rows[0]];
-legacyHeaders.splice(11, 0, 'Acknowledgement');
-legacyHeaders.splice(13, 0, 'Ack attempts');
-const legacyRow = [...rows[1]];
-legacyRow.splice(11, 0, 'queued');
-legacyRow.splice(13, 0, 0);
-legacyRow[12] = 'queued';
-rows.splice(0, rows.length, legacyHeaders, legacyRow);
-context.processPendingMail();
-assert.equal(rows[1][11], 'queued');
-assert.equal(rows[1][12], 'sent');
-assert.equal(emails.length, 2);
-assert.ok(emails.every(mail => mail.to === properties.NOTIFICATION_EMAIL));
-assert.equal(post({ ...lead, id: '8b4d7ea5-44c3-4f6c-82d6-8e809d9404f8', token: env.GAS_SHARED_SECRET }).status, 'accepted');
-assert.equal(rows[2][11], 'disabled');
-assert.equal(rows[2][12], 'queued');
-context.processPendingMail();
-assert.equal(emails.length, 3);
-assert.ok(emails.every(mail => mail.to === properties.NOTIFICATION_EMAIL));
 failStorage = true;
-assert.equal(post({ ...lead, id: '9b4d7ea5-44c3-4f6c-82d6-8e809d9404f8', token: env.GAS_SHARED_SECRET }).status, 'save_failed');
-console.log('Passed: configuration gating, origin/token checks, payload bounds, durable acceptance, duplicate suppression, formula protection, quota queue, owner-only notification retries and legacy log compatibility, and ambiguous-send handling.');
+assert.equal((await handle(request({ ...lead, id: '9b4d7ea5-44c3-4f6c-82d6-8e809d9404f8', turnstileToken: 'token' }), env, goodFetch)).status, 502);
+failStorage = false;
+// Notification failures must never turn a durably saved inquiry into a false failure.
+const queuedLead = { ...lead, id: '8b4d7ea5-44c3-4f6c-82d6-8e809d9404f8', turnstileToken: 'token' };
+emailError = Object.assign(new Error('synthetic quota rejection'), { code: 'E_DAILY_LIMIT_EXCEEDED' });
+assert.equal((await handle(request(queuedLead), env, goodFetch)).status, 200);
+let queued = () => sqlite.prepare('SELECT * FROM consulting_inquiries WHERE id = ?').get(queuedLead.id);
+assert.equal(queued().notification_state, 'failed');
+emailError = undefined;
+await Promise.all([notifyInquiry(env, queuedLead.id), notifyInquiry(env, queuedLead.id)]);
+assert.equal(sent.length, 2);
+assert.equal(queued().notification_state, 'sent');
+await processPendingNotifications(env);
+assert.equal(sent.length, 2);
+// Ambiguous service errors and interrupted sends must not trigger automatic duplicates.
+sqlite.prepare("UPDATE consulting_inquiries SET notification_state = 'queued', notification_attempts = 0 WHERE id = ?").run(queuedLead.id);
+emailError = new Error('synthetic connection interruption');
+await processPendingNotifications(env);
+assert.equal(queued().notification_state, 'sending');
+emailError = undefined;
+await processPendingNotifications(env);
+assert.equal(sent.length, 2);
+sqlite.prepare("UPDATE consulting_inquiries SET notification_state = 'failed', notification_attempts = 3 WHERE id = ?").run(queuedLead.id);
+await processPendingNotifications(env);
+assert.equal(sent.length, 2);
+assert.ok(sent.every(message => message.to === env.NOTIFICATION_EMAIL));
+const worker = await readFile(new URL('./worker.mjs', import.meta.url), 'utf8');
+assert.ok(!worker.includes('script.google.com'));
+assert.ok(!worker.includes('GAS_SHARED_SECRET'));
+sqlite.close();
+console.log('Passed: configuration gating, origin/token checks, payload bounds, real SQL persistence, duplicate/conflict handling, owner-only notifications, atomic send claims, retries, and ambiguous-send handling.');

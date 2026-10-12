@@ -72,13 +72,16 @@ form?.addEventListener('submit', async (event) => {
     try {
       const response = await fetch('/api/inquiries', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...data, id: submissionId, turnstileToken: token }), signal: AbortSignal.timeout(35000) });
       const saved = await response.json();
+      if (response.status === 409) { submissionId = undefined; throw new Error('submission_conflict'); }
       if (!response.ok || saved.status !== 'accepted' || saved.id !== submissionId) throw new Error('unconfirmed');
       status.textContent = `Your inquiry has been received for review. Reference: ${saved.id}`;
       draft.hidden = true;
       form.reset();
       submissionId = undefined;
-    } catch {
-      status.textContent = 'We could not confirm receipt. Your inquiry may have been saved. You can retry, or choose “Use email instead” below to contact us directly.';
+    } catch (error) {
+      if (error.message === 'submission_conflict') {
+        status.textContent = 'An earlier version of this inquiry was already received. Review your changes and send again if you want to submit a new inquiry.';
+      } else status.textContent = 'We could not confirm receipt. Your inquiry may have been saved. You can retry, or choose “Use email instead” below to contact us directly.';
     } finally {
       sending = false;
       submitButton.disabled = false;

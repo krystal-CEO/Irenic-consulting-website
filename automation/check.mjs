@@ -38,14 +38,15 @@ assert.equal((await handle(request(), env, badBackend)).status, 502);
 assert.equal(await (await handle(new Request(origin + '/'), env)).text(), 'static page');
 
 // Exercise the Google code with private synthetic in-memory rows; no Google writes or email.
-const rows = [Array(17).fill('header')];
+const rows = [];
 const properties = { SHARED_SECRET: env.GAS_SHARED_SECRET, SHEET_ID: 'synthetic-only', NOTIFICATION_EMAIL: 'owner@example.org' };
 let quota = 0;
 let emails = [];
-let failAcknowledgement = false;
+let failNotification = false;
 let failStorage = false;
 const sheet = {
   getLastRow: () => rows.length,
+  getLastColumn: () => rows[0].length,
   appendRow: (row) => { if (failStorage) throw new Error('synthetic'); rows.push(row); },
   getRange: (row, col, count = 1, width = 1) => ({
     getValues: () => rows.slice(row - 1, row - 1 + count).map(r => r.slice(col - 1, col - 1 + width)),
@@ -58,10 +59,11 @@ const context = vm.createContext({
   LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
   SpreadsheetApp: { openById: () => ({ getSheetByName: () => sheet }), flush() {} },
   ContentService: { MimeType: { JSON: 'json' }, createTextOutput: (value) => ({ setMimeType: () => JSON.parse(value) }) },
-  MailApp: { getRemainingDailyQuota: () => quota, sendEmail: (email) => { if (failAcknowledgement && email.to === lead.email) throw new Error('synthetic'); emails.push(email); } },
+  MailApp: { getRemainingDailyQuota: () => quota, sendEmail: (email) => { if (failNotification) throw new Error('synthetic'); emails.push(email); } },
   console: { error() {}, log() {} }
 });
 vm.runInContext(await readFile(new URL('./google-apps-script/Code.gs', import.meta.url), 'utf8'), context);
+rows.push(Array.from(context.HEADERS));
 const post = (data) => context.doPost({ postData: { contents: JSON.stringify(data) } });
 assert.equal(post({ ...lead, token: 'wrong' }).status, 'unauthorized');
 assert.equal(rows.length, 1);
@@ -75,20 +77,42 @@ context.processPendingMail();
 assert.equal(emails.length, 0);
 assert.equal(rows[1][11], 'queued');
 quota = 5;
-failAcknowledgement = true;
+failNotification = true;
 context.processPendingMail();
 assert.equal(rows[1][11], 'failed');
-assert.equal(rows[1][12], 'sent');
-assert.equal(emails.length, 1);
-failAcknowledgement = false;
+assert.equal(rows[1][12], 1);
+assert.equal(emails.length, 0);
+failNotification = false;
 context.processPendingMail();
 assert.equal(rows[1][11], 'sent');
-assert.equal(emails.length, 2);
+assert.equal(emails.length, 1);
+assert.equal(emails[0].to, properties.NOTIFICATION_EMAIL);
+assert.equal(emails[0].replyTo, lead.email);
 context.processPendingMail();
-assert.equal(emails.length, 2);
+assert.equal(emails.length, 1);
 rows[1][11] = 'sending';
 context.processPendingMail();
+assert.equal(emails.length, 1);
+// A spreadsheet from the earlier setup must not cause queued visitor mail to send.
+const legacyHeaders = [...rows[0]];
+legacyHeaders.splice(11, 0, 'Acknowledgement');
+legacyHeaders.splice(13, 0, 'Ack attempts');
+const legacyRow = [...rows[1]];
+legacyRow.splice(11, 0, 'queued');
+legacyRow.splice(13, 0, 0);
+legacyRow[12] = 'queued';
+rows.splice(0, rows.length, legacyHeaders, legacyRow);
+context.processPendingMail();
+assert.equal(rows[1][11], 'queued');
+assert.equal(rows[1][12], 'sent');
 assert.equal(emails.length, 2);
+assert.ok(emails.every(mail => mail.to === properties.NOTIFICATION_EMAIL));
+assert.equal(post({ ...lead, id: '8b4d7ea5-44c3-4f6c-82d6-8e809d9404f8', token: env.GAS_SHARED_SECRET }).status, 'accepted');
+assert.equal(rows[2][11], 'disabled');
+assert.equal(rows[2][12], 'queued');
+context.processPendingMail();
+assert.equal(emails.length, 3);
+assert.ok(emails.every(mail => mail.to === properties.NOTIFICATION_EMAIL));
 failStorage = true;
 assert.equal(post({ ...lead, id: '9b4d7ea5-44c3-4f6c-82d6-8e809d9404f8', token: env.GAS_SHARED_SECRET }).status, 'save_failed');
-console.log('Passed: configuration gating, origin/token checks, payload bounds, durable acceptance, duplicate suppression, formula protection, quota queue, partial mail retries, and ambiguous-send handling.');
+console.log('Passed: configuration gating, origin/token checks, payload bounds, durable acceptance, duplicate suppression, formula protection, quota queue, owner-only notification retries and legacy log compatibility, and ambiguous-send handling.');

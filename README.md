@@ -38,11 +38,11 @@ npm run check
 
 ## Lead automation status
 
-The server handler, progressive contact-form submission mode, and dedicated Google Apps Script are prepared in `automation/`. **Direct submission is disabled until the Consulting Google deployment, Turnstile keys, and explicit enable flag are configured.** Visitors continue to use the email-draft workflow meanwhile. See `automation/README.md` for the browser-only setup steps. The handler is bound only to `/api/*`; static pages continue to be served as assets.
+The server handler, progressive contact-form submission mode, and dedicated Google Apps Script are prepared in `automation/`. **Direct submission is disabled until the Consulting Google deployment, Turnstile keys, and explicit enable flag are configured.** Visitors continue to use the email-draft workflow meanwhile. When activated, inquiries are saved to a private Google Sheet and notify the owner. Visitors see a website confirmation and receive no automatic acknowledgement email. An existing Google account can own the separate Consulting project; Consulting does not need its own Google Workspace. See `automation/README.md` for the browser-only setup steps. The handler is bound only to `/api/*`; static pages continue to be served as assets.
 
 The inquiry composer is **not** a server-side submission or automated CRM pipeline. It does not save leads, send acknowledgements, book meetings, or trigger follow-up. Analytics and advertising pixels are not installed. Event hooks contain only an action label and page path, never form entries.
 
-Before replacing the draft workflow with submission, select and connect the approved CRM/delivery destination, implement server-side validation, spam protection and delivery failure handling, update the privacy notice, and verify an actual test lead end to end. A successful response must mean the inquiry was durably accepted. Acknowledgements, follow-up, proposals, contracts, and invoices require explicit configured services; do not imply they are active before verification.
+Before replacing the draft workflow with submission, select and connect the approved CRM/delivery destination, implement server-side validation, spam protection and delivery failure handling, update the privacy notice, and verify an actual test lead end to end. A successful response must mean the inquiry was durably accepted. Follow-up, proposals, contracts, and invoices require explicit configured services; do not imply they are active before verification.
 
 Clinical intake data must stay separate from this public business site. Never place API tokens or credentials in browser code or the repository.
 

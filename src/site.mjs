@@ -51,7 +51,7 @@ async function configureSubmission() {
     widget = window.turnstile.render(challenge, { sitekey: config.siteKey, action: 'consulting_inquiry', 'error-callback': () => { useDraftMode(); return true; } });
     mode = 'submit';
     heading.textContent = 'Tell us about your organization.';
-    note.textContent = 'Send a business inquiry directly to Irenic Consulting. We’ll save it for review and send an email acknowledgement. No meeting is booked by submitting this form.';
+    note.textContent = 'Send a business inquiry directly to Irenic Consulting. We’ll save it for review. No meeting is booked by submitting this form.';
     submitButton.textContent = 'Send inquiry ↗';
     emailInstead.hidden = false;
   } catch { useDraftMode(); }
@@ -73,7 +73,7 @@ form?.addEventListener('submit', async (event) => {
       const response = await fetch('/api/inquiries', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...data, id: submissionId, turnstileToken: token }), signal: AbortSignal.timeout(35000) });
       const saved = await response.json();
       if (!response.ok || saved.status !== 'accepted' || saved.id !== submissionId) throw new Error('unconfirmed');
-      status.textContent = `Your inquiry has been received for review. An email acknowledgement will follow. Reference: ${saved.id}`;
+      status.textContent = `Your inquiry has been received for review. Reference: ${saved.id}`;
       draft.hidden = true;
       form.reset();
       submissionId = undefined;

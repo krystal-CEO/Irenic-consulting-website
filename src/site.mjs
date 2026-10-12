@@ -18,10 +18,75 @@ const draft = document.querySelector('#email-draft');
 const draftText = document.querySelector('#draft-text');
 const draftLink = document.querySelector('#open-email');
 const status = document.querySelector('#draft-status');
-form?.addEventListener('submit', (event) => {
+const submitButton = form?.querySelector('button[type="submit"]');
+const note = document.querySelector('#inquiry-mode-note');
+const heading = document.querySelector('#inquiry-heading');
+const challenge = document.querySelector('#inquiry-challenge');
+const emailInstead = document.querySelector('#email-instead');
+let mode = 'draft';
+let sending = false;
+let submissionId;
+let widget;
+function useDraftMode() {
+  mode = 'draft';
+  if (heading) heading.textContent = 'Prepare your inquiry.';
+  if (note) note.textContent = 'This form creates an email draft on your device. Review it, then send it through your email app. Nothing is submitted by completing this form.';
+  if (submitButton) submitButton.textContent = 'Prepare email draft ↗';
+  if (challenge) challenge.hidden = true;
+  if (emailInstead) emailInstead.hidden = true;
+}
+emailInstead?.addEventListener('click', useDraftMode);
+async function configureSubmission() {
+  if (!form) return;
+  try {
+    const response = await fetch('/api/inquiry-config', { signal: AbortSignal.timeout(6000) });
+    if (!response.ok) return;
+    const config = await response.json();
+    if (!config.enabled || !config.siteKey) return;
+    const script = document.createElement('script');
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    script.async = true;
+    await new Promise((resolve, reject) => { script.onload = resolve; script.onerror = reject; document.head.appendChild(script); });
+    challenge.hidden = false;
+    widget = window.turnstile.render(challenge, { sitekey: config.siteKey, action: 'consulting_inquiry', 'error-callback': () => { useDraftMode(); return true; } });
+    mode = 'submit';
+    heading.textContent = 'Tell us about your organization.';
+    note.textContent = 'Send a business inquiry directly to Irenic Consulting. We’ll save it for review and send an email acknowledgement. No meeting is booked by submitting this form.';
+    submitButton.textContent = 'Send inquiry ↗';
+    emailInstead.hidden = false;
+  } catch { useDraftMode(); }
+}
+void configureSubmission();
+form?.addEventListener('submit', async (event) => {
   event.preventDefault();
-  if (!form.reportValidity()) return;
+  if (sending || !form.reportValidity()) return;
   const data = Object.fromEntries(new FormData(form));
+  if (mode === 'submit') {
+    const token = window.turnstile.getResponse(widget);
+    if (!token) { status.textContent = 'Please complete the verification before sending.'; return; }
+    submissionId ||= crypto.randomUUID();
+    sending = true;
+    submitButton.disabled = true;
+    emailInstead.disabled = true;
+    status.textContent = 'Sending your inquiry…';
+    try {
+      const response = await fetch('/api/inquiries', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...data, id: submissionId, turnstileToken: token }), signal: AbortSignal.timeout(35000) });
+      const saved = await response.json();
+      if (!response.ok || saved.status !== 'accepted' || saved.id !== submissionId) throw new Error('unconfirmed');
+      status.textContent = `Your inquiry has been received for review. An email acknowledgement will follow. Reference: ${saved.id}`;
+      draft.hidden = true;
+      form.reset();
+      submissionId = undefined;
+    } catch {
+      status.textContent = 'We could not confirm receipt. Your inquiry may have been saved. You can retry, or choose “Use email instead” below to contact us directly.';
+    } finally {
+      sending = false;
+      submitButton.disabled = false;
+      emailInstead.disabled = false;
+      window.turnstile.reset(widget);
+    }
+    return;
+  }
   const result = composeInquiry(data);
   draftText.value = `To: info@irenicconsulting.com\nSubject: ${result.subject}\n\n${result.body}`;
   draftLink.href = result.url;

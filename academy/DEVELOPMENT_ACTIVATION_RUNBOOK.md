@@ -44,3 +44,30 @@ The GitHub Actions workflow handles these automatically and uses `scripts/auth-s
 ## Course-release blockers
 
 Courses, pricing, CE eligibility, tax handling, Stripe ownership, refunds, assessments, evaluation, PDF certificates, board reporting, admin MFA, retention and private file storage remain separate unreleased work. No production feature claims or CE credit advertisements are authorized here.
+
+## Cloudflare staging handoff — built but not executed
+
+Cloudflare's October 2026 documentation describes **10 D1 databases per Workers Free account**, a total 5 GB D1 storage allowance, and a **10 ms CPU time per Free Worker request**. The connected browser shows `irenicconsulting.com` within the Cloudflare account, but the current Chat browser connector is **read-only**. A tab being open does not confer write access. Account-side actions must be carried out in Work mode (browser control) or by an authorized Cloudflare API/CLI connection.
+
+Before adding anything to the existing Cloudflare account:
+
+1. In **Storage & databases → D1 SQL database**, count existing D1 databases (maximum 10 on Free), inspect current usage and confirm `irenic-academy-dev` does not already exist. Also confirm the existing `irenic-consulting-inquiries` database is intact.
+2. Check the account's **Workers plan**; if Free, do not subscribe or upgrade. If there is no D1 capacity or free-tier suitability is uncertain, stop without creating a resource.
+3. Create **one** distinct `irenic-academy-dev` database only if Free capacity is available and no duplicate exists. Do not run any SQL migration on the existing Consulting database.
+4. Match the Cloudflare account ID and newly issued Academy D1 UUID to the **untracked staging config generator**:
+   ```sh
+   ACADEMY_CLOUDFLARE_ACCOUNT_ID='<account-id-from-verified-dashboard>' \
+   ACADEMY_DEV_D1_ID='<new-academy-d1-uuid>' \
+   npm run prepare:staging
+   ```
+   This writes `academy/portal/wrangler.staging.local.jsonc`. It deliberately sets `workers_dev=false`, publishes **no route**, and sets `ACADEMY_ENABLED=false`. The generator refuses the Consulting D1 ID and known synthetic placeholders. It does **not** call Cloudflare, apply SQL, publish a Worker, modify DNS, create user accounts or incur a charge.
+5. **Do not remotely deploy or apply migrations** just because a config exists. First compare the actual Better Auth-generated auth SQL schema and plan the security review; then gate the separate Worker behind an appropriate access control and run controlled CPU tests. No synthetic `@example.invalid` fixtures, outbox endpoints or test secrets may be deployed.
+6. For learner email, use a separately verified consulting-owned sender (candidate: Resend Free). Do not change root domain MX or existing Consulting mail forwarding, and do not activate signup until sending and bounce/error monitoring are tested.
+
+Official Cloudflare references:
+- https://developers.cloudflare.com/d1/platform/limits/
+- https://developers.cloudflare.com/d1/platform/pricing/
+- https://developers.cloudflare.com/workers/platform/limits/
+- https://developers.cloudflare.com/d1/get-started/
+
+**Status:** Staging configuration generator committed and guarded. Cloudflare account-side resource creation is **not confirmed or performed** from this chat.

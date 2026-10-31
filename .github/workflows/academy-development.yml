@@ -1,0 +1,45 @@
+name: Academy development checks (no deployment)
+
+on:
+  push:
+    branches:
+      - feature/academy-foundation-2026-10-31
+    paths:
+      - 'academy/**'
+      - '.github/workflows/academy-development.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'academy/**'
+      - '.github/workflows/academy-development.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  academy-validation:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: academy/portal
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: academy/portal/package-lock.json
+      - name: Install pinned dev dependencies
+        run: npm install --no-audit --no-fund
+      - name: Unit and local SQLite API tests
+        run: npm run check
+      - name: Dry-run Worker bundle (no deploy)
+        run: npm run validate:worker
+      - name: Confirm production settings untouched
+        run: |
+          test ! -f .dev.vars
+          test ! -f .env
+          test -f .wrangler/academy-dry-run/index.js

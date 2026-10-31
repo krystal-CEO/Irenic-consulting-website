@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "irenic-academy-local-integration-test-only",
+  "main": "./dev/test-worker.mjs",
+  "compatibility_date": "2026-10-31",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "ACADEMY_ENABLED": "true",
+    "ACADEMY_TEST_ONLY": "true",
+    "ACADEMY_ORIGIN": "http://127.0.0.1:8787",
+    "BETTER_AUTH_SECRET": "synthetic_integration_key_do_not_reuse_2026_10_31_example_only",
+    "RESEND_API_KEY": "re_synthetic_never_sent",
+    "EMAIL_FROM": "Irenic Academy <learning@courses.irenicconsulting.com>"
+  },
+  "d1_databases": [{
+    "binding": "ACADEMY_DB",
+    "database_name": "academy-test-d1-local-only",
+    "database_id": "11111111-1111-4111-8111-111111111111",
+    "preview_database_id": "academy-integration-local",
+    "migrations_dir": "migrations"
+  }]
+}

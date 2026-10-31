@@ -30,8 +30,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: academy/portal/package-lock.json
       - name: Install pinned dev dependencies
         run: npm install --no-audit --no-fund
       - name: Unit and local SQLite API tests

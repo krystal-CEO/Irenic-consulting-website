@@ -70,3 +70,11 @@ All development remains unmerged in the draft pull request. **No customer enroll
 ### October 31 end-to-end milestone
 
 The local Cloudflare Worker successfully completed real Better Auth signup, email-link confirmation, session handling, password reset, old-password rejection, and old-session revocation with synthetic `@example.invalid` users. No actual emails were sent. See `academy/DEVELOPMENT_ACTIVATION_RUNBOOK.md` and `academy/EMAIL_SETUP_AND_BUDGET.md`. A real remote database and email sender are still not activated. Cloudflare Workers Free's 10 ms CPU limit is a launch gate for password hashing.
+
+### Cloudflare staging preparation (October 31, 2026)
+
+- [x] Verified current Cloudflare Free-tier published D1 limits (10 databases, 5 GB total storage); account's existing D1 count is still **unverified**.
+- [x] Added staging Wrangler config generator that requires the confirmed Cloudflare account and a new Academy-specific D1 ID; rejects the existing Consulting ID and placeholders, leaves accounts disabled and exposes no route. Automated tests pass.
+- [x] GitHub integration tests: **11 passed, 0 failed**, plus actual local Better Auth signup/verification/login/reset and Worker dry run. Evidence: https://github.com/krystal-CEO/Irenic-consulting-website/actions/runs/41212438390
+- [ ] Create/verify remote `irenic-academy-dev` in Cloudflare. The current Chat-connected browser is **read-only** and cannot perform account-side writes; use Work mode browser control or an authorized Cloudflare management integration.
+- [ ] Confirm free-plan CPU, correct Account ID, separate Worker, sender onboarding and safe private staging route before any public activation.

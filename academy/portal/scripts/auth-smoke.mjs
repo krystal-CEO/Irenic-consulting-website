@@ -7,7 +7,7 @@ const password='Synthetic-CI-Password-2026!';
 const nextPassword='Synthetic-CI-New-Password-2026!';
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function req(path,{method='GET',body,cookie,redirect='manual'}={}) {
-  const options={method,redirect,headers:{...(cookie?{cookie}:{}),...(body?{'content-type':'application/json',origin:base}:{})}};
+  const options={method,redirect,headers:{'cf-connecting-ip':'192.0.2.10',...(cookie?{cookie}:{}),...(body?{'content-type':'application/json',origin:base}:{})}};
   if(body)options.body=JSON.stringify(body);
   const r=await fetch(path.startsWith('http')?path:base+path,options);
   const data=await r.clone().json().catch(()=>null);
@@ -77,8 +77,17 @@ const resetReq=await req('/api/auth/request-password-reset',{method:'POST',body:
 assert.ok([200,202].includes(resetReq.status),'Password reset request failed: '+resetReq.status);
 const resetMail=await waitForMessage('reset',beforeReset);
 const resetLink=urlIn(resetMail);
-const token=new URL(resetLink).searchParams.get('token');
-assert.ok(token,'Password reset link had no token');
+// Better Auth validates the emailed action link first and then redirects the
+// learner to the selected reset page with a fresh, validated ?token= value.
+const resetEntrance=await req(resetLink);
+assert.ok([302,303,307,308].includes(resetEntrance.status),'Reset link did not redirect to reset form');
+const redirectTo=resetEntrance.response.headers.get('location');
+assert.ok(redirectTo,'Reset action returned no destination');
+const resetPage=new URL(redirectTo,base);
+assert.equal(resetPage.origin,base);
+assert.equal(resetPage.pathname,'/reset-password.html');
+const token=resetPage.searchParams.get('token');
+assert.ok(token,'Validated password-reset redirect had no token');
 const reset=await req('/api/auth/reset-password',{method:'POST',body:{newPassword:nextPassword,token}});
 assert.equal(reset.status,200,'Password reset endpoint failed: '+reset.status);
 const oldLogin=await req('/api/auth/sign-in/email',{method:'POST',body:{email,password}});

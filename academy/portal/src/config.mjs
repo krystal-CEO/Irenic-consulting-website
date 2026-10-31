@@ -7,7 +7,11 @@ export function authConfigReady(env) {
   try {
     const origin = new URL(env.ACADEMY_ORIGIN);
     const local = origin.origin === 'http://127.0.0.1:8787' || origin.origin === 'http://localhost:8787';
-    return (origin.protocol === 'https:' || local) && origin.origin === env.ACADEMY_ORIGIN &&
-      (origin.hostname === 'learn.irenicconsulting.com' || local);
+    const allowedRemoteOrigins = new Set([
+      'https://learn.irenicconsulting.com',
+      'https://learn-staging.irenicconsulting.com'
+    ]);
+    return origin.origin === env.ACADEMY_ORIGIN &&
+      (local || (origin.protocol === 'https:' && allowedRemoteOrigins.has(origin.origin)));
   } catch { return false; }
 }

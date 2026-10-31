@@ -1,26 +1,33 @@
 # Irenic Academy — development activation runbook
 
-**Status: only isolated local tests have been performed. Do not treat this as approval to deploy.**
+**Status: isolated local tests and one empty, separate Cloudflare D1 development database. This is not approval to deploy or launch.**
 
-## Verified evidence (October 31, 2026)
+## Verified local evidence (October 31, 2026)
 
-- [Passing CI run](https://github.com/krystal-CEO/Irenic-consulting-website/actions/runs/41211784436): Node 22, Better Auth 1.7.14, Wrangler 4.156.0, nine synthetic API tests passed, separate local D1 migration/seed passed, real Better Auth signup/verification/cookie sign-in/password reset worked end to end, and the Worker dry-run bundle succeeded.
-- Local integration used `wrangler.integration.jsonc`, a **fake** database UUID and only `@example.invalid` users, with mail delivered into a **local test outbox** instead of contacting any real provider.
-- The production consulting Worker, its `CONSULTING_DB`, its domain, root email records, live subscriptions, and Stripe were untouched.
-- A live Cloudflare Academy database, Resend account, verified sender subdomain and real Academy hostname are **NOT** configured or verified.
+- [Passing CI run](https://github.com/krystal-CEO/Irenic-consulting-website/actions/runs/41211784436): Node 22, Better Auth 1.7.14, Wrangler 4.156.0, nine synthetic API tests passed, isolated local D1 migration and seed passed, real Better Auth signup/verification/sign-in/password reset worked locally, and the Worker dry-run bundle succeeded.
+- Local integration used `wrangler.integration.jsonc`, a fake D1 UUID, only `@example.invalid` users, and a local test outbox. It did not contact Resend.
+- A follow-up code change allows only the exact HTTPS production and staging Academy origins; auth still fails closed unless the explicit enable flag, separate D1 binding, auth secret, Resend key, and sender are all present.
+- These local results do not establish Cloudflare Free CPU performance or remote Better Auth migration compatibility.
 
-## Before provisioning a separate remote development database
+## Cloudflare development resources (October 31, 2026)
 
-1. Confirm the Cloudflare account is the intended account for the **Irenic Consulting & Wellness Solutions LLC** project. Do not accidentally use Foundation databases or existing Therapeutic systems.
-2. Confirm that the account can create and use another D1 database on its current plan without changing tiers or requiring a payment method. Review usage limits and the 10 ms Workers Free CPU limit.
-3. Choose a distinct database named `irenic-academy-dev`, **not** `irenic-consulting-inquiries`, and keep its UUID out of the production Consulting Wrangler configuration.
-4. Create a **separate** Academy Worker and development route on a non-public/guarded subdomain; never expose synthetic test inbox or test harness endpoints, and never point the site's production `main` branch at the Academy Worker.
-5. Compare generated Better Auth 1.7.14 schema (including database rate-limit table) to the reviewed migrations before using `wrangler d1 migrations apply --remote`. Test backups and restoration with synthetic data.
-6. Add dedicated secret values through Cloudflare's secrets manager, not the repository. Restrict administrator deployment access and have the deployment reviewed.
-7. Request a security review and validate login/signup/verification/reset and the Worker Free CPU usage in a gated, non-production environment before public traffic.
-8. Only then approve routing, DNS and launch, with a rollback path.
+- The connected account is on the **Workers Free plan ($0)**. Its D1 page showed 3 of 10 databases and 77.82 kB of 5 GB total storage before creation.
+- Created exactly one separate database: `irenic-academy-dev`. Its Cloudflare UUID is kept only in the ignored local staging config, not committed to the repository. It is empty: 0 tables and 0 queries.
+- D1 usage now shows 4 of 10 databases. The existing `irenic-consulting-inquiries` database remains separate and unchanged.
+- A local `wrangler.staging.local.jsonc` was prepared with `workers_dev=false`, no routes, `ACADEMY_ENABLED=false`, and the new Academy D1 binding.
+- No Academy Worker was created or deployed. No remote migration, DNS/routing change, email setup, secret, user account, subscription, or payment was made. The production Consulting site, domain, email records, subscriptions and Stripe remain untouched.
+- The app’s fail-closed origin allowlist now includes `https://learn-staging.irenicconsulting.com` as a distinct staging origin. No DNS record or route exists for it.
 
-## Local reproducible test commands (do not target remote Cloudflare)
+## Before any remote Worker, migration or public traffic
+
+1. Generate Better Auth 1.7.14’s D1/SQLite schema from the pinned dependency and compare it column-by-column with the committed migration, including database rate limiting. Do not apply migrations remotely until reviewed.
+2. Decide the private staging access mechanism and review who can deploy. Do not expose the synthetic test inbox, test Worker, fixtures, or secrets.
+3. Validate migration backup and restoration with synthetic data.
+4. Add dedicated secrets through Cloudflare’s secrets manager only after sender ownership/verification and the private access gate are in place. Do not put secrets in Git.
+5. Test login, verification, reset, cookies, rate limits, and CPU usage under Cloudflare Free’s 10 ms per-request CPU ceiling in a gated non-production environment.
+6. Keep the Academy hostname unrouted until the access control, rollback path, and launch review are complete.
+
+## Local reproducible commands (do not target remote Cloudflare)
 
 Run from `academy/portal/`:
 
@@ -33,41 +40,18 @@ npx wrangler d1 execute ACADEMY_DB --local --config wrangler.integration.jsonc -
 npx wrangler dev --local --config wrangler.integration.jsonc --port 8787 --ip 127.0.0.1
 ```
 
-The GitHub Actions workflow handles these automatically and uses `scripts/auth-smoke.mjs` to exercise the local login flow. Do **not** run `wrangler deploy` or `wrangler d1 migrations apply --remote` from this draft.
+The GitHub Actions workflow handles the local checks. Do **not** run `wrangler deploy` or `wrangler d1 migrations apply --remote` from this draft.
 
 ## Zero-monthly-fee limits
 
-- Cloudflare D1 and Workers include free allowances, but account suitability, costs and CPU consumption remain unconfirmed for password-based authentication. Better Auth's default scrypt may exceed the Free Worker 10 ms CPU/request limit, even when local tests pass.
-- Candidate learner email provider: Resend Free, currently listed at $0/month, 3,000 emails/month and 100/day. A consulting-owned verified sender subdomain must be set up before signup can be enabled. See `EMAIL_SETUP_AND_BUDGET.md`.
-- The first Academy version can be trialed locally at no subscription cost. Production monthly cost cannot honestly be promised as $0 without testing under live plan limits and accounting for growth, email, video delivery and maintenance.
+- Cloudflare D1 and Workers have free allowances, but suitability, total cost, and password-hashing CPU use remain unconfirmed for real learners.
+- Candidate learner email provider: Resend Free ($0/month, listed at 3,000 emails/month and 100/day). A consulting-owned sender subdomain must be set up separately before signup can be enabled. See `EMAIL_SETUP_AND_BUDGET.md`.
+- Production monthly cost cannot be promised as $0 without live limit tests and accounting for growth, email, video delivery, and maintenance.
 
 ## Course-release blockers
 
-Courses, pricing, CE eligibility, tax handling, Stripe ownership, refunds, assessments, evaluation, PDF certificates, board reporting, admin MFA, retention and private file storage remain separate unreleased work. No production feature claims or CE credit advertisements are authorized here.
+Course content and pricing, CE eligibility, tax handling, Stripe ownership, refunds, assessments/evaluations, PDF certificates, board reporting, admin MFA, retention, and private file storage remain unreleased work. No CE approval or credit claims are authorized here.
 
-## Cloudflare staging handoff — built but not executed
+## Status
 
-Cloudflare's October 2026 documentation describes **10 D1 databases per Workers Free account**, a total 5 GB D1 storage allowance, and a **10 ms CPU time per Free Worker request**. The connected browser shows `irenicconsulting.com` within the Cloudflare account, but the current Chat browser connector is **read-only**. A tab being open does not confer write access. Account-side actions must be carried out in Work mode (browser control) or by an authorized Cloudflare API/CLI connection.
-
-Before adding anything to the existing Cloudflare account:
-
-1. In **Storage & databases → D1 SQL database**, count existing D1 databases (maximum 10 on Free), inspect current usage and confirm `irenic-academy-dev` does not already exist. Also confirm the existing `irenic-consulting-inquiries` database is intact.
-2. Check the account's **Workers plan**; if Free, do not subscribe or upgrade. If there is no D1 capacity or free-tier suitability is uncertain, stop without creating a resource.
-3. Create **one** distinct `irenic-academy-dev` database only if Free capacity is available and no duplicate exists. Do not run any SQL migration on the existing Consulting database.
-4. Match the Cloudflare account ID and newly issued Academy D1 UUID to the **untracked staging config generator**:
-   ```sh
-   ACADEMY_CLOUDFLARE_ACCOUNT_ID='<account-id-from-verified-dashboard>' \
-   ACADEMY_DEV_D1_ID='<new-academy-d1-uuid>' \
-   npm run prepare:staging
-   ```
-   This writes `academy/portal/wrangler.staging.local.jsonc`. It deliberately sets `workers_dev=false`, publishes **no route**, and sets `ACADEMY_ENABLED=false`. The generator refuses the Consulting D1 ID and known synthetic placeholders. It does **not** call Cloudflare, apply SQL, publish a Worker, modify DNS, create user accounts or incur a charge.
-5. **Do not remotely deploy or apply migrations** just because a config exists. First compare the actual Better Auth-generated auth SQL schema and plan the security review; then gate the separate Worker behind an appropriate access control and run controlled CPU tests. No synthetic `@example.invalid` fixtures, outbox endpoints or test secrets may be deployed.
-6. For learner email, use a separately verified consulting-owned sender (candidate: Resend Free). Do not change root domain MX or existing Consulting mail forwarding, and do not activate signup until sending and bounce/error monitoring are tested.
-
-Official Cloudflare references:
-- https://developers.cloudflare.com/d1/platform/limits/
-- https://developers.cloudflare.com/d1/platform/pricing/
-- https://developers.cloudflare.com/workers/platform/limits/
-- https://developers.cloudflare.com/d1/get-started/
-
-**Status:** Staging configuration generator committed and guarded. Cloudflare account-side resource creation is **not confirmed or performed** from this chat.
+The separate empty development D1 exists and a local-only config points to it. No Worker, route, DNS change, email sender, secret, or remote migration is configured.

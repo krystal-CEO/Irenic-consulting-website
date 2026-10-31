@@ -46,4 +46,13 @@ assert.ok(contact.includes('Nothing is submitted by completing this form.'));
 assert.match(contact, /<input id="email"[^>]+type="email"[^>]+required/);
 assert.match(contact, /<textarea id="message"[^>]+maxlength="2000"[^>]+required/);
 assert.ok(!contact.includes('<form action='));
+const serviceSelect = contact.match(/<select id="service"[^>]*>(.*?)<\/select>/s)?.[1];
+assert.ok(serviceSelect, 'Required service dropdown exists');
+const serviceChoices = Array.from(serviceSelect.matchAll(/<option(?:\s[^>]*)?>(.*?)<\/option>/gs), m => m[1]);
+assert.deepEqual(serviceChoices, [
+  'Choose an area of interest', 'Leadership development', 'Workplace mental health',
+  'Culture &amp; psychological safety', 'Workshops &amp; training',
+  'Organizational assessment', 'Ongoing consulting', 'Help choosing the right approach'
+], 'Every service must be a selectable option so required form validation can pass');
+
 console.log(`Checked ${htmlCount} pages: routes, anchors, assets, schema, CSP, and inquiry encoding.`);

@@ -9,7 +9,8 @@
     "check": "node --test tests/*.test.mjs",
     "dev": "wrangler dev --local",
     "deploy": "node scripts/prevent-deploy.mjs",
-    "validate:worker": "wrangler deploy --dry-run --outdir=.wrangler/academy-dry-run"
+    "validate:worker": "wrangler deploy --dry-run --outdir=.wrangler/academy-dry-run",
+    "prepare:staging": "node scripts/prepare-staging.mjs"
   },
   "dependencies": {
     "better-auth": "1.7.14"

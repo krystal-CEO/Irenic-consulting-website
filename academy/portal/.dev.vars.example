@@ -1,0 +1,6 @@
+# Reference only. Do not commit real values or enable sign-ups before sender verification.
+ACADEMY_ENABLED=false
+ACADEMY_ORIGIN=http://127.0.0.1:8787
+# BETTER_AUTH_SECRET=<at-least-32-random-characters>
+# RESEND_API_KEY=<verified-consulting-sender-api-key>
+# EMAIL_FROM=Irenic Academy <learning@courses.irenicconsulting.com>

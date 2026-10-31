@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Irenic Academy — Learner Portal (Development)</title>
+<meta name="description" content="Irenic Academy's secure professional-learning portal, under development.">
+<meta name="robots" content="noindex,nofollow"><link rel="stylesheet" href="/styles.css"><script type="module" src="/app.mjs"></script>
+</head><body><a class="skip" href="#main">Skip to main content</a>
+<header class="header"><div class="wrap header-inner"><a class="brand" href="/">Irenic <span>Academy</span></a>
+<nav aria-label="Main navigation"><a href="https://irenicconsulting.com">Irenic Consulting</a> <button id="sign-out" type="button" hidden>Sign out</button></nav></div></header>
+<main id="main" class="wrap">
+<section class="hero"><p class="eyebrow">Professional education · Development preview</p>
+<h1>Learn with intention.<br><em>Lead with accountability.</em></h1>
+<p>Irenic Academy is being developed as a professional education and toolkit platform. Enrollment and continuing-education credit are not currently offered.</p>
+<p id="system-status" role="status" aria-live="polite">Checking Academy availability...</p></section>
+<section class="grid" aria-label="Learning workspace">
+<div class="panel" id="account-section"><h2>My learner account</h2><p id="account-status" aria-live="polite">Sign in to access your enrolled lessons.</p>
+<div id="auth-actions"><form id="signin"><h3>Sign in</h3><label for="signin-email">Email</label><input id="signin-email" name="email" type="email" autocomplete="email" required>
+<label for="signin-password">Password</label><input id="signin-password" name="password" type="password" autocomplete="current-password" required>
+<button type="submit">Sign in</button></form>
+<details><summary>Create learner account</summary><form id="signup"><label for="signup-name">Full name</label><input id="signup-name" name="name" autocomplete="name" maxlength="100" required>
+<label for="signup-email">Email</label><input id="signup-email" name="email" type="email" autocomplete="email" required>
+<label for="signup-password">Password (at least 12 characters)</label><input id="signup-password" name="password" type="password" minlength="12" autocomplete="new-password" required>
+<button type="submit">Create account</button></form></details>
+<details><summary>Forgot password?</summary><form id="forgot"><label for="forgot-email">Account email</label><input id="forgot-email" name="email" type="email" autocomplete="email" required>
+<button type="submit">Request reset link</button></form></details></div>
+</div>
+<div class="panel"><h2>Available courses</h2><p class="small">Only released courses appear in the public catalog. A purchase or authorized enrollment is required for access to lessons.</p>
+<div id="catalog"><p>No courses have been released here.</p></div></div>
+</section>
+<section class="panel lessons" id="my-learning" hidden><h2>My learning</h2><div id="enrollments"></div>
+<div id="lesson-list" aria-live="polite"></div><article id="lesson-content" hidden><h3 id="lesson-title"></h3><div id="lesson-body"></div>
+<p class="small">Acknowledging a text lesson is not proof of educational participation or credit eligibility.</p><button id="acknowledge" type="button">Acknowledge this text lesson</button></article></section>
+<p class="notice" id="message" role="status" aria-live="polite"></p>
+</main><footer class="footer"><div class="wrap">Irenic Academy · An initiative of Irenic Consulting &amp; Wellness Solutions LLC<br>
+Professional development and course-completion records are separate from therapy services. No continuing-education approval is claimed.</div></footer></body></html>

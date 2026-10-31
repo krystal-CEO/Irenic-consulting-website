@@ -87,3 +87,15 @@ test('revocation immediately removes access regardless of historic progress', as
   assert.equal((await call('/api/my/courses/version-accountable-1/lessons/lesson-bias','synthetic-user-a')).status,404);
   assert.equal(sql.prepare('SELECT COUNT(*) AS count FROM academy_lesson_progress').get().count,1);
 });
+
+test('published course identity and versioned lessons cannot be rewritten; superseded version access remains', async () => {
+  const {call,sql} = setup();
+  assert.throws(()=>sql.prepare("UPDATE academy_lessons SET body_text = 'tampered' WHERE id='lesson-bias'").run(),/immutable/);
+  assert.throws(()=>sql.prepare("DELETE FROM academy_lessons WHERE id='lesson-bias'").run(),/immutable/);
+  assert.throws(()=>sql.prepare("INSERT INTO academy_lessons(id,version_id,position,title,kind,body_text) VALUES('new','version-accountable-1',5,'Tampered','text','x')").run(),/cannot accept/);
+  assert.throws(()=>sql.prepare("UPDATE academy_courses SET title='Rewritten' WHERE id='course-accountable'").run(),/immutable/);
+  assert.throws(()=>sql.prepare("UPDATE academy_course_versions SET version_number=9 WHERE id='version-accountable-1'").run(),/immutable/);
+  sql.prepare("UPDATE academy_course_versions SET status='superseded' WHERE id='version-accountable-1'").run();
+  assert.equal((await call('/api/my/courses/version-accountable-1/progress','synthetic-user-a')).status,200);
+  assert.equal((await call('/api/catalog',null)).data.courses.length,0);
+});

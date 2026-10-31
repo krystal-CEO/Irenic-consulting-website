@@ -53,6 +53,8 @@ export function makeAuth(env, ctx, sendEmailFn = sendEmail) {
     },
     advanced: {
       cookiePrefix: 'irenic_academy',
+      // Cloudflare supplies this header at the edge. Never trust arbitrary forwarded-for chains.
+      ipAddress: { ipAddressHeaders: ['cf-connecting-ip'] },
       crossSubDomainCookies: { enabled: false },
       backgroundTasks: { handler: p => ctx.waitUntil(p) }
     }

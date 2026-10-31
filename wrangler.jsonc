@@ -18,5 +18,9 @@
       "database_name": "irenic-consulting-inquiries",
       "database_id": "3a6778fb-510e-4224-9cc7-4800b7cce7f7"
     }
-  ]
+  ],
+  "vars": {
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAFt56Aon8K7YT-G-",
+    "INQUIRIES_ENABLED": "false"
+  }
 }

@@ -2,7 +2,16 @@
 
 Consulting does not use either existing Google Workspace, Apps Script project, Google Sheet, or Foundation donor database. The Consulting Google script has been removed from this repository. Do not paste the earlier script into either Workspace.
 
-The website currently stays in email-draft mode. Direct submission requires its own Cloudflare D1 database, Turnstile configuration, internal email notification binding, and an explicit activation flag. No live resources, inboxes, credentials, or billing changes have been configured by this source update.
+The website currently stays in email-draft mode. Direct submission requires its own Cloudflare D1 database, Turnstile configuration, internal email notification binding, and an explicit activation flag. The dedicated D1 database and Turnstile widget have now been provisioned; email notification delivery is still pending. No billing or existing email-routing changes have been made.
+
+## Verified setup — October 31, 2026
+
+- Created `irenic-consulting-inquiries` (`3a6778fb-510e-4224-9cc7-4800b7cce7f7`) and executed `schema.sql` successfully.
+- Connected `CONSULTING_DB` in tracked Wrangler configuration; the production dashboard confirms the binding.
+- Created a Managed Turnstile widget for `irenicconsulting.com` (which also covers its subdomains). The public site key is tracked in Wrangler; `TURNSTILE_SECRET_KEY` is stored encrypted in production.
+- Direct submissions remain explicitly disabled until email delivery is ready and an end-to-end test passes.
+- Email Sending onboarding currently shows a Workers Paid requirement. The free Email Routing onboarding screen proposes apex MX/SPF changes; it was cancelled without activation to preserve existing Squarespace/Mailgun forwarding. Do not assume a free sender-only subdomain can be onboarded in this account through the current dashboard.
+- Remaining: choose and configure a notification delivery option, bind `CONSULTING_EMAIL`, configure the fixed owner destination and sender, attach retries, and run the live acceptance test before activation.
 
 ## After activation
 

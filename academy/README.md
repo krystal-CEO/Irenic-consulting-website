@@ -50,3 +50,17 @@ This branch must **not** be merged into `main` until complete. No new secrets, p
 ## Cost and maintenance planning (not a quote)
 
 Low-traffic Cloudflare Workers/D1/R2 can be inexpensive, but pricing depends on usage and plan; email delivery, streaming/captions, transactional payments, domains, backups and monitoring may add costs. Working range to budget, **not verified provider quotes:** approximately $0–$50/month at prototype scale and $25–$150+/month for a small production portal, plus per-sale processing fees and substantial implementation/security maintenance. Confirm official prices and quotas before any purchase. A custom portal is not maintenance-free.
+
+## Progress checkpoint — October 31, 2026
+
+- [x] Isolated Academy Worker scaffold, authentication integration code and fail-closed configuration.
+- [x] Dedicated local D1 learner/course schema (NOT migrated to Cloudflare), published-version immutability rules.
+- [x] Synthetic first-course lessons, read-only catalog, owner-scoped learner dashboard and text-lesson progress.
+- [x] Negative authorization and immutability tests: **9 passing locally** with Node 22.16.
+- [x] First-course instructional outline committed for editorial review without CE claims.
+- [ ] Install and exercise the actual Better Auth, Wrangler and D1 integration in a networked development environment; reconcile generated auth migrations.
+- [ ] Set up a separate verified Consulting email sender and Academy D1/Worker development services after confirming ownership, DNS and billing requirements.
+- [ ] Implement real assessment/evaluation evidence, reporting, payment sandbox, refund reconciliation, private assets and certificates, with independent security review.
+- [ ] Publish Academy SEO/catalog pages on the consulting site only after verifying current state/profession-specific CE rules and launch readiness.
+
+All development remains unmerged in the draft pull request. **No customer enrollment, CE credit or payment is active.**

@@ -4,7 +4,10 @@ const SERVICES = new Set(['Leadership development', 'Workplace mental health', '
 const reply = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' } });
 const emailAddress = value => typeof value === 'string' && /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(value);
 export function isConfigured(env) {
-  return env.INQUIRIES_ENABLED === 'true' && Boolean(env.TURNSTILE_SITE_KEY && env.TURNSTILE_SECRET_KEY && env.CONSULTING_DB?.prepare && env.CONSULTING_EMAIL?.send && emailAddress(env.NOTIFICATION_EMAIL) && /^inquiries@(?:notifications\.)?irenicconsulting\.com$/.test(env.NOTIFICATION_FROM || ''));
+  const deliveryReady = env.NOTIFICATION_PROVIDER === 'resend'
+    ? typeof env.RESEND_API_KEY === 'string' && /^re_[A-Za-z0-9_-]+$/.test(env.RESEND_API_KEY)
+    : !env.NOTIFICATION_PROVIDER && Boolean(env.CONSULTING_EMAIL?.send);
+  return env.INQUIRIES_ENABLED === 'true' && Boolean(env.TURNSTILE_SITE_KEY && env.TURNSTILE_SECRET_KEY && env.CONSULTING_DB?.prepare && deliveryReady && emailAddress(env.NOTIFICATION_EMAIL) && /^inquiries@(?:notifications\.)?irenicconsulting\.com$/.test(env.NOTIFICATION_FROM || ''));
 }
 export function validateLead(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -71,7 +74,7 @@ export async function handle(request, env, fetcher = fetch, context) {
     if (!stored) throw new Error('save_unconfirmed');
     if (stored.fingerprint !== fingerprint) return reply(409, { status: 'submission_conflict' });
     // The durable row owns notification state; retries cannot send a second accepted email.
-    const notification = notifyInquiry(env, lead.id).catch(() => {});
+    const notification = notifyInquiry(env, lead.id, fetcher).catch(() => {});
     if (context?.waitUntil) context.waitUntil(notification); else await notification;
     return reply(200, { status: 'accepted', id: lead.id });
   } catch (_) {
@@ -79,7 +82,27 @@ export async function handle(request, env, fetcher = fetch, context) {
     return reply(502, { status: 'delivery_unconfirmed' });
   }
 }
-export async function notifyInquiry(env, id) {
+export async function deliverNotification(env, message, id, fetcher = fetch) {
+  if (env.NOTIFICATION_PROVIDER !== 'resend') return env.CONSULTING_EMAIL.send(message);
+  const response = await fetcher('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.RESEND_API_KEY,
+      'idempotency-key': 'consulting-inquiry/' + id },
+    body: JSON.stringify({ from: message.from.name + ' <' + message.from.email + '>',
+      to: [env.NOTIFICATION_EMAIL], reply_to: message.replyTo, subject: message.subject, text: message.text }),
+    signal: AbortSignal.timeout(10000)
+  });
+  if (!response.ok) {
+    // Only explicit non-acceptance is retryable. A timeout, 5xx, conflict, or malformed
+    // success may follow acceptance and stays 'sending' for manual review.
+    const code = response.status === 429 ? 'E_RATE_LIMIT_EXCEEDED'
+      : [400, 401, 403, 422].includes(response.status) ? 'E_VALIDATION_ERROR' : 'unconfirmed';
+    throw Object.assign(new Error('notification_delivery_unconfirmed'), { code });
+  }
+  const body = await response.json();
+  return { messageId: typeof body.id === 'string' && body.id ? body.id : undefined };
+}
+export async function notifyInquiry(env, id, fetcher = fetch) {
   if (!isConfigured(env)) return;
   // Claim once, atomically. Leave interrupted/ambiguous sends in 'sending' for owner review.
   const lead = await env.CONSULTING_DB.prepare(`UPDATE consulting_inquiries
@@ -89,7 +112,7 @@ export async function notifyInquiry(env, id) {
   if (!lead) return;
   let sent;
   try {
-    sent = await env.CONSULTING_EMAIL.send({
+    sent = await deliverNotification(env, {
       from: { email: env.NOTIFICATION_FROM, name: 'Irenic Consulting' },
       to: env.NOTIFICATION_EMAIL,
       replyTo: lead.email,
@@ -100,7 +123,7 @@ export async function notifyInquiry(env, id) {
         'Reference: ' + lead.id, 'Received: ' + lead.received_at, '',
         'Review the Consulting inquiry log in Cloudflare and respond through info@irenicconsulting.com.',
         'Confirm scope, pricing, and scheduling directly.'].join('\n')
-    });
+    }, id, fetcher);
   } catch (error) {
     // Ambiguous service errors are not automatically retried: mail may already have been accepted.
     const knownRejection = new Set(['E_RATE_LIMIT_EXCEEDED', 'E_DAILY_LIMIT_EXCEEDED', 'E_SENDER_NOT_VERIFIED', 'E_SENDER_DOMAIN_NOT_AVAILABLE', 'E_RECIPIENT_NOT_ALLOWED', 'E_RECIPIENT_SUPPRESSED', 'E_VALIDATION_ERROR', 'E_FIELD_MISSING', 'E_DELIVERY_FAILED']);
@@ -113,11 +136,11 @@ export async function notifyInquiry(env, id) {
   await env.CONSULTING_DB.prepare(`UPDATE consulting_inquiries SET notification_state = 'sent', notification_message_id = ?, notification_error = NULL WHERE id = ?`)
     .bind(sent.messageId, id).run();
 }
-export async function processPendingNotifications(env) {
+export async function processPendingNotifications(env, fetcher = fetch) {
   if (!isConfigured(env)) return;
   const pending = await env.CONSULTING_DB.prepare(`SELECT id FROM consulting_inquiries
     WHERE notification_state IN ('queued', 'failed') AND notification_attempts < 3 ORDER BY received_at LIMIT 25`).all();
-  for (const lead of pending.results || []) await notifyInquiry(env, lead.id);
+  for (const lead of pending.results || []) await notifyInquiry(env, lead.id, fetcher);
 }
 export default {
   fetch(request, env, context) { return handle(request, env, fetch, context); },

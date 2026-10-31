@@ -21,6 +21,9 @@
   ],
   "vars": {
     "TURNSTILE_SITE_KEY": "0x4AAAAAAFt56Aon8K7YT-G-",
-    "INQUIRIES_ENABLED": "false"
+    "INQUIRIES_ENABLED": "false",
+    "NOTIFICATION_PROVIDER": "resend",
+    "NOTIFICATION_EMAIL": "info@irenicconsulting.com",
+    "NOTIFICATION_FROM": "inquiries@notifications.irenicconsulting.com"
   }
 }

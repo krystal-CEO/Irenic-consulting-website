@@ -14,7 +14,7 @@ async function authorizedEnrollment(db, userId, versionId) {
     JOIN academy_course_versions v ON v.id = e.version_id
     JOIN academy_courses c ON c.id = v.course_id
     WHERE e.user_id = ? AND e.version_id = ? AND e.status IN ('active','completed')
-      AND v.status = 'published' AND c.status = 'published'`, userId, versionId);
+      AND v.status IN ('published','superseded') AND c.status = 'published'`, userId, versionId);
 }
 async function accessibleLesson(db, userId, versionId, lessonId) {
   const enrollment = await authorizedEnrollment(db, userId, versionId);
@@ -66,7 +66,7 @@ export async function handleAcademyApi(request, env, getSession) {
         JOIN academy_course_versions v ON v.id = e.version_id
         JOIN academy_courses c ON c.id = v.course_id
         WHERE e.user_id = ? AND e.status IN ('active','completed')
-        AND v.status = 'published' AND c.status = 'published'
+        AND v.status IN ('published','superseded') AND c.status = 'published'
         ORDER BY c.title LIMIT 100`, user.id);
     return response(200, { courses: result.results || [] });
   }

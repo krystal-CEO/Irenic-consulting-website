@@ -13,7 +13,7 @@ async function sendEmail(env, to, subject, body) {
   });
   if (!result.ok) throw new Error('academy_email_delivery_unconfirmed');
 }
-export function makeAuth(env, ctx) {
+export function makeAuth(env, ctx, sendEmailFn = sendEmail) {
   if (!authConfigReady(env)) throw new Error('academy_auth_not_configured');
   const scheduleEmail = promise => {
     // Failures never grant a session. Add persistent alerts before real signups.
@@ -29,7 +29,7 @@ export function makeAuth(env, ctx) {
       enabled: true, requireEmailVerification: true, autoSignIn: false,
       minPasswordLength: 12, maxPasswordLength: 128,
       revokeSessionsOnPasswordReset: true,
-      sendResetPassword: ({user,url}) => scheduleEmail(sendEmail(env,user.email,
+      sendResetPassword: ({user,url}) => scheduleEmail(sendEmailFn(env,user.email,
         'Reset your Irenic Academy password',
         'To reset your password, open this link:\n' + url +
         '\n\nIf you did not request this, ignore the message.'))
@@ -37,7 +37,7 @@ export function makeAuth(env, ctx) {
     emailVerification: {
       sendOnSignUp: true, sendOnSignIn: true, autoSignInAfterVerification: false,
       expiresIn: 3600,
-      sendVerificationEmail: ({user,url}) => scheduleEmail(sendEmail(env,user.email,
+      sendVerificationEmail: ({user,url}) => scheduleEmail(sendEmailFn(env,user.email,
         'Verify your Irenic Academy email',
         'Verify your email by opening this link:\n' + url +
         '\n\nIf you did not sign up, ignore the message.'))

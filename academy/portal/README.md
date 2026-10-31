@@ -1,6 +1,6 @@
 # Irenic Academy learner portal — isolated development scaffold
 
-**Not a live product.** Development-only code for the consulting company. It does not change the consulting website's production branch, custom domains, inquiry Worker, or databases. Initial course material is a synthetic fixture; CE hours, eligibility, approvals, payment, enrollment and certificates are NOT represented as active.
+**Not a live product.** Development-only code for the consulting company. The production branch, custom domains, inquiry Worker, and Consulting D1 are unchanged. One separate, empty Cloudflare D1 database named `irenic-academy-dev` now exists for future development; it has no tables, users, or migrations. Initial course material is a synthetic fixture; CE hours, eligibility, approvals, payment, enrollment and certificates are NOT represented as active.
 
 ## What is implemented
 
@@ -33,11 +33,11 @@ npx wrangler dev --local --config wrangler.integration.jsonc --port 8787 --ip 12
 
 The example `wrangler.jsonc` contains a **deliberately fake database UUID**, no production route, and an isolated Worker name. It MUST NOT be used to deploy or migrate a real database. Never run `--remote`. `npm run deploy` deliberately exits unsuccessfully.
 
-The production-configured Worker remains fail-closed. By default, all auth and learner API routes return service-unavailable until separate service credentials exist and `ACADEMY_ENABLED=true` is configured. The static page is a development preview; no paid customer can enroll. Auth email delivery uses Resend only after a consulting-owned sender domain is explicitly configured and verified. There is no new email account, DNS configuration, subscription or real charge in this branch.
+The production-configured Worker remains fail-closed. By default, all auth and learner API routes return service-unavailable until separate service credentials exist and `ACADEMY_ENABLED=true` is configured. The static page is a development preview; no paid customer can enroll. Auth email delivery uses Resend only after a consulting-owned sender domain is explicitly configured and verified. There is no new email account, DNS configuration, subscription or real charge in this branch. The empty Academy D1 is the only remote Cloudflare resource created for this scaffold; no Worker, route, secret, or remote migration exists.
 
 ## Before any launch
 
-1. Review and generate compatible auth migrations for a pinned Better Auth version. Install packages and run real Worker+D1 signup, verification, reset, rate-limit and cookie integration tests.
+1. Generate Better Auth auth migrations for the pinned version and compare them with the local migration. Reconcile the empty Academy D1 only after review, then test signup, verification, reset, rate limits, and cookies in a gated non-production Worker.
 2. Establish Academy-specific Cloudflare deployment, private storage, backups/restoration, monitoring, domain and email sender, all under consulting's approved accounts.
 3. Develop payment-led enrollments with verified account and amount, webhook signature/idempotency, refunds and reconciliation; disallow enrollment from browser success callbacks.
 4. Add versioned assessments/evaluations, eligibility matrix, admin MFA, exports and server-only certificate issuance, then test with hostile requests and independent review.
@@ -46,7 +46,7 @@ The production-configured Worker remains fail-closed. By default, all auth and l
 
 ## Rollback
 
-The feature branch can be closed or deleted with no effect on `main`. There are no remote resources or live migrations from this scaffold.
+The feature branch can be closed or deleted with no effect on `main`. The empty Academy D1 is separate from `main` and the Consulting database; no Worker, route, DNS, or live migration was created.
 
 ## CI integration status (2026-10-31)
 

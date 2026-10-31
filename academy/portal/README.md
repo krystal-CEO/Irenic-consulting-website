@@ -19,20 +19,21 @@ From `academy/portal`:
 npm run check
 ```
 
-These tests use Node 22's built-in SQLite (experimental in Node 22). They do not require npm dependency installation or external network access. They validate the API and SQL behavior with synthetic sessions, **not Better Auth/Cloudflare end-to-end**.
+These nine tests use Node 22's built-in SQLite and synthetic sessions. Additionally, GitHub Actions now installs the real Better Auth and Wrangler dependencies, migrates an isolated local Cloudflare D1 database, and runs a complete synthetic auth journey through local workerd. See [passing CI evidence](https://github.com/krystal-CEO/Irenic-consulting-website/actions/runs/41211784436).
 
-For actual Worker integration, first install dependencies in a networked environment, confirm the Better Auth package's currently generated D1 SQL schema (including rateLimit) matches or supersedes the local draft, and run a separate local Cloudflare D1 instance:
+For repeatable local integration, install dependencies and initialize the isolated test D1 instance:
 
 ```
 npm install
-npx wrangler d1 migrations apply irenic-academy-LOCAL-ONLY --local
-npx wrangler d1 execute irenic-academy-LOCAL-ONLY --local --file ./dev/seed-synthetic.sql
-npm run dev
+npx wrangler d1 migrations apply ACADEMY_DB --local --config wrangler.integration.jsonc
+npx wrangler d1 execute ACADEMY_DB --local --config wrangler.integration.jsonc --file dev/outbox.sql
+npx wrangler d1 execute ACADEMY_DB --local --config wrangler.integration.jsonc --file dev/seed-synthetic.sql
+npx wrangler dev --local --config wrangler.integration.jsonc --port 8787 --ip 127.0.0.1
 ```
 
 The example `wrangler.jsonc` contains a **deliberately fake database UUID**, no production route, and an isolated Worker name. It MUST NOT be used to deploy or migrate a real database. Never run `--remote`. `npm run deploy` deliberately exits unsuccessfully.
 
-By default, all auth and learner API routes return service-unavailable until separate service credentials exist and `ACADEMY_ENABLED=true` is configured. The static page is a development preview; no paid customer can enroll. Auth email delivery uses Resend only after a consulting-owned sender domain is explicitly configured and verified. There is no new email account, DNS configuration, subscription or real charge in this branch.
+The production-configured Worker remains fail-closed. By default, all auth and learner API routes return service-unavailable until separate service credentials exist and `ACADEMY_ENABLED=true` is configured. The static page is a development preview; no paid customer can enroll. Auth email delivery uses Resend only after a consulting-owned sender domain is explicitly configured and verified. There is no new email account, DNS configuration, subscription or real charge in this branch.
 
 ## Before any launch
 
@@ -46,3 +47,11 @@ By default, all auth and learner API routes return service-unavailable until sep
 ## Rollback
 
 The feature branch can be closed or deleted with no effect on `main`. There are no remote resources or live migrations from this scaffold.
+
+## CI integration status (2026-10-31)
+
+**Verified:** registration, blocked unverified login, email verification, session cookie, owner-scoped dashboard, password-reset request, email-link validation and redirect, password change, old-password rejection, old-session revocation, local D1 migration/seed, 9 SQLite API tests, and Worker dry-run bundle.
+
+**Not verified:** actual Resend deliverability or consulting sender ownership, Cloudflare remote D1, Free-plan password-hashing CPU feasibility, production DNS/route, payments or CE certificates. The local email outbox is synthetic, test-only code, never a real transactional sender.
+
+See [development activation runbook](../DEVELOPMENT_ACTIVATION_RUNBOOK.md) and [email/budget considerations](../EMAIL_SETUP_AND_BUDGET.md).

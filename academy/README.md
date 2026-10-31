@@ -58,9 +58,15 @@ Low-traffic Cloudflare Workers/D1/R2 can be inexpensive, but pricing depends on 
 - [x] Synthetic first-course lessons, read-only catalog, owner-scoped learner dashboard and text-lesson progress.
 - [x] Negative authorization and immutability tests: **9 passing locally** with Node 22.16.
 - [x] First-course instructional outline committed for editorial review without CE claims.
-- [ ] Install and exercise the actual Better Auth, Wrangler and D1 integration in a networked development environment; reconcile generated auth migrations.
-- [ ] Set up a separate verified Consulting email sender and Academy D1/Worker development services after confirming ownership, DNS and billing requirements.
+- [x] Install Better Auth 1.7.14 and Wrangler 4.156.0 and exercise signup, email-link verification, sessions and password reset against a separate **local** D1 database in GitHub CI; 9 API tests also pass. See [successful run](https://github.com/krystal-CEO/Irenic-consulting-website/actions/runs/41211784436).
+- [ ] Compare a freshly generated Better Auth schema with the local migration, and independently review the authentication design before any remote migration.
+- [ ] Provision separate **remote** Academy D1/Worker development services only after Cloudflare account ownership, free-tier cost and CPU suitability are verified.
+- [ ] Set up a consulting-owned verified sender subdomain and transactional email provider, with DNS review and permission before activation.
 - [ ] Implement real assessment/evaluation evidence, reporting, payment sandbox, refund reconciliation, private assets and certificates, with independent security review.
 - [ ] Publish Academy SEO/catalog pages on the consulting site only after verifying current state/profession-specific CE rules and launch readiness.
 
 All development remains unmerged in the draft pull request. **No customer enrollment, CE credit or payment is active.**
+
+### October 31 end-to-end milestone
+
+The local Cloudflare Worker successfully completed real Better Auth signup, email-link confirmation, session handling, password reset, old-password rejection, and old-session revocation with synthetic `@example.invalid` users. No actual emails were sent. See `academy/DEVELOPMENT_ACTIVATION_RUNBOOK.md` and `academy/EMAIL_SETUP_AND_BUDGET.md`. A real remote database and email sender are still not activated. Cloudflare Workers Free's 10 ms CPU limit is a launch gate for password hashing.

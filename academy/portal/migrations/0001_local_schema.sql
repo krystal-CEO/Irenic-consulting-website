@@ -81,3 +81,30 @@ CREATE TABLE IF NOT EXISTS academy_audit_events (
 );
 CREATE INDEX IF NOT EXISTS academy_access_user ON academy_enrollments(user_id,status);
 CREATE INDEX IF NOT EXISTS academy_lessons_version ON academy_lessons(version_id,position);
+
+-- Published course identity and published-version lesson content are immutable.
+-- Future revisions must create new draft versions rather than overwrite history.
+CREATE TRIGGER IF NOT EXISTS academy_lock_course_identity
+BEFORE UPDATE OF slug, title, summary ON academy_courses
+WHEN OLD.status IN ('published','retired')
+BEGIN SELECT RAISE(ABORT, 'published course identity is immutable'); END;
+CREATE TRIGGER IF NOT EXISTS academy_lock_published_version
+BEFORE UPDATE OF course_id, version_number, created_at, content_digest ON academy_course_versions
+WHEN OLD.status IN ('published','superseded')
+BEGIN SELECT RAISE(ABORT, 'published course version is immutable'); END;
+CREATE TRIGGER IF NOT EXISTS academy_no_unpublish_version
+BEFORE UPDATE OF status ON academy_course_versions
+WHEN OLD.status IN ('published','superseded') AND NEW.status = 'draft'
+BEGIN SELECT RAISE(ABORT, 'published version cannot return to draft'); END;
+CREATE TRIGGER IF NOT EXISTS academy_no_edit_published_lesson
+BEFORE UPDATE ON academy_lessons
+WHEN (SELECT status FROM academy_course_versions WHERE id = OLD.version_id) IN ('published','superseded')
+BEGIN SELECT RAISE(ABORT, 'published lesson is immutable'); END;
+CREATE TRIGGER IF NOT EXISTS academy_no_delete_published_lesson
+BEFORE DELETE ON academy_lessons
+WHEN (SELECT status FROM academy_course_versions WHERE id = OLD.version_id) IN ('published','superseded')
+BEGIN SELECT RAISE(ABORT, 'published lesson is immutable'); END;
+CREATE TRIGGER IF NOT EXISTS academy_no_insert_published_lesson
+BEFORE INSERT ON academy_lessons
+WHEN (SELECT status FROM academy_course_versions WHERE id = NEW.version_id) IN ('published','superseded')
+BEGIN SELECT RAISE(ABORT, 'published version cannot accept new lessons'); END;

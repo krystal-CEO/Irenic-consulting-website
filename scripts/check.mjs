@@ -22,6 +22,9 @@ for (const file of files.filter(x => x.endsWith('.html'))) {
   assert.match(html, /<meta name="description" content="[^\"]+"/);
   const schema = html.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)[1];
   assert.equal(JSON.parse(schema).email, 'info@irenicconsulting.com');
+  assert.ok(!('telephone' in JSON.parse(schema)), `${file}: no phone in organization schema`);
+  assert.ok(!/href="tel:/i.test(html), `${file}: no phone links`);
+  assert.ok(!/\(928\) 316-3388|\+1-928-316-3388|\+19283163388/.test(html), `${file}: no former consulting phone`);
   const hash = createHash('sha256').update(schema).digest('base64');
   assert.ok(headers.includes(`'sha256-${hash}'`), `${file}: CSP hash`);
   for (const m of html.matchAll(/(?:href|src)="([^\"]+)"/g)) {

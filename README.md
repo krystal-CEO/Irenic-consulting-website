@@ -30,7 +30,7 @@ npm run check
 ## What currently works
 
 - Responsive home, service, workshop, about, contact, and privacy pages, plus custom 404.
-- Business telephone and email links.
+- Email and website inquiry-form contact options; no public telephone number.
 - Inquiry form validates entries and creates an email draft on the visitor's device. It explicitly tells visitors to send the email; no false submission acknowledgement is displayed.
 - Copyable inquiry draft as fallback when an email application is unavailable.
 - Canonical URLs, sitemap, robots file, social metadata, and organization schema.

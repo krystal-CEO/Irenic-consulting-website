@@ -45,7 +45,7 @@ assert.equal(url.searchParams.get('subject'), draft.subject);
 assert.equal(url.searchParams.get('body'), draft.body);
 assert.ok(draft.body.includes('Questions? #1: workload + boundaries\nNext line.'));
 const contact = await readFile(path.join(root, 'contact/index.html'), 'utf8');
-assert.ok(contact.includes('Nothing is submitted by completing this form.'));
+assert.ok(contact.includes('Direct submission is available when verification loads.'));
 assert.match(contact, /<input id="email"[^>]+type="email"[^>]+required/);
 assert.match(contact, /<textarea id="message"[^>]+maxlength="2000"[^>]+required/);
 assert.ok(!contact.includes('<form action='));

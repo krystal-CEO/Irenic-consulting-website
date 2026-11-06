@@ -1,31 +1,31 @@
-# Better Auth D1 schema reconciliation
+# Better Auth schema reconciliation
 
-Status: static source-to-migration review completed; CLI-generated SQL comparison remains a pre-migration gate.
+Status: pinned CLI generation and local SQLite comparison completed November 6, 2026. Remote D1 validation remains pending.
 
-Reviewed against Better Auth v1.7.14 source and the Academy local-only migration `academy/portal/migrations/0001_local_schema.sql` on branch `feature/academy-foundation-2026-10-31`. The configured options use the default user/session/account/verification models, no schema-extending plugins, database-backed rate limiting, and no secondary storage.
+## Method
 
-## Field and index comparison
+Restored the Academy branch and installed `better-auth@1.7.14` and its matching official CLI package `auth@1.7.14` in an isolated scratch directory. The old package name `@better-auth/cli` does not publish version 1.7.14. Node version: 24.22.1.
 
-| Table | v1.7.14 default fields | Local migration result |
-| --- | --- | --- |
-| `user` | id, name, email, emailVerified, image, createdAt, updatedAt | All present. Email is unique; emailVerified uses SQLite integer 0/1; date values use integer columns. |
-| `session` | id, userId, expiresAt, token, ipAddress, userAgent, createdAt, updatedAt | All present. userId references user(id) with cascade; token is unique; userId index is present. |
-| `account` | id, userId, accountId, providerId, accessToken, refreshToken, idToken, accessTokenExpiresAt, refreshTokenExpiresAt, scope, password, createdAt, updatedAt | All present. userId references user(id) with cascade; userId index is present. |
-| `verification` | id, identifier, value, expiresAt, createdAt, updatedAt | All present; identifier index is present. |
-| `rateLimit` | id, key, count, lastRequest | All present; key is unique. lastRequest is represented by SQLite INTEGER. |
+The generator configuration imports the actual `makeAuth` from `academy/portal/src/auth.mjs`, supplies an empty Node `DatabaseSync(':memory:')` database and synthetic local configuration values, and replaces email delivery with a throwing stub. It uses the actual database-backed rate-limit options and no plugins. No remote binding, credential, email delivery, or deployed Worker is used.
 
-## Findings
+Command: `DO_NOT_TRACK=1 node node_modules/auth/dist/index.mjs generate --config auth.mjs --output generated.sql --yes` from the isolated generator directory. The CLI reported missing tables in the deliberately empty in-memory database, then successfully generated SQL with exit code 0. No migrate command was run.
 
-- No required default field is missing from the local migration for the inspected v1.7.14 configuration.
-- The migration's index names are Academy-specific. The expected unique constraints and lookup indexes are represented; exact generated index naming has not been compared.
-- The v1.7.14 default account schema does not require an `issuer` field. Do not add it based on instructions for older Better Auth versions.
-- SQLite affinity choices are compatible with the adapter types: text for strings, integer for booleans, dates, numbers, and the rate-limit timestamp.
-- This is a structural review of the tagged source, not output from running the installed Better Auth CLI. The local workspace was pruned and the CLI was not installed or run during this review. Before any remote migration, run the CLI for the locked version 1.7.14 in the restored project, capture its generated SQL, compare columns, constraints, foreign keys, and indexes, and update this record with the output hash/review date.
-- The Cloudflare D1 database `irenic-academy-dev` remains empty. Do not apply either Academy migration remotely until the CLI-generated schema review and deployment authorization are complete.
+Generated SQL: [evidence/better-auth-1.7.14-generated.sql](evidence/better-auth-1.7.14-generated.sql). SHA-256: `55995dca64087f9b5a184d60c324be6a7793d4c2b0e169690473a707a0b61e80`.
 
-## Reviewed files
+Executed generated SQL and the existing local migration separately in two disposable in-memory SQLite databases. Compared PRAGMA table_info, foreign_key_list, index_list and index_info for user, session, account, verification and rateLimit. The structured result is [evidence/better-auth-1.7.14-comparison.json](evidence/better-auth-1.7.14-comparison.json). Column tuple values in that report are type, not-null flag, default, primary-key flag.
 
-- Better Auth v1.7.14: `packages/core/src/db/get-tables.ts` and default schema files under `packages/core/src/db/schema/`.
-- Academy branch: `academy/portal/src/auth.mjs`, `academy/portal/package.json`, and `academy/portal/migrations/0001_local_schema.sql`.
+## Results
 
-No production or consulting database was queried or changed for this review.
+All five tables have identical column sets, nullability and primary-key flags. Foreign keys, cascade behavior, index column sets and uniqueness match. No required column or key constraint is missing. The SQL is not textually identical:
+
+- Generated date fields declare DATE; the local migration declares INTEGER. These are different SQLite declared affinities. Runtime date serialization must still be validated with the D1 adapter before remote use.
+- Generated rateLimit.lastRequest declares BIGINT; the local migration declares INTEGER. Both have integer affinity in SQLite.
+- The migration adds DEFAULT 0 to user.emailVerified; generated SQL has no database default. Both require a non-null integer. The extra default is conservative but is a real schema difference.
+- The three nonunique lookup indexes have different names; their columns and uniqueness match.
+- The generated account schema has no issuer column.
+
+No migration was changed to hide these differences. The raw generator SQL is evidence only and must not be applied as an additional migration: it would recreate existing auth tables and contains no Academy course tables.
+
+## Remaining gates
+
+This generation used the Node SQLite adapter with the real application options, not a live Cloudflare D1 binding. Validate date round trips, auth lifecycle, backup/restore and CPU behavior in an isolated D1-compatible local environment before deciding remote readiness. Deployment, DNS, email, real learner access and remote migration remain disabled under the user's existing constraints.

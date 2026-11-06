@@ -58,7 +58,7 @@ try {
 } catch(e) {errors++;audit.push('FAIL /api/inquiry-config: '+e.message);}
 try {
   const {body} = await get('/');
-  console.log('Cloudflare Web Analytics beacon: ' + (/static\\.cloudflareinsights\\.com\\/beacon\\.min\\.js/.test(body) ? 'present in public HTML' : 'not found in public HTML'));
+  console.log('Cloudflare Web Analytics beacon: ' + (body.includes('static.cloudflareinsights.com/beacon.min.js') ? 'present in public HTML' : 'not found in public HTML'));
   console.log('Google Search Console verification meta: ' + (/name="google-site-verification"/.test(body) ? 'present in public HTML' : 'not found in public HTML'));
 } catch(error) {console.log('Could not inspect public analytics markup: '+error.message);}
 for(const line of audit) console.log(line);

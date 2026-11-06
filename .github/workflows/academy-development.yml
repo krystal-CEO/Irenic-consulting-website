@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install pinned dev dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Unit and local SQLite API tests
         run: npm run check
       - name: Create isolated local D1 and seed synthetic lessons

@@ -8,6 +8,7 @@ const base = 'https://learn.irenicconsulting.com';
 function setup() {
   const sql = new DatabaseSync(':memory:');
   sql.exec(readFileSync(new URL('../migrations/0001_local_schema.sql', import.meta.url), 'utf8'));
+  sql.exec(readFileSync(new URL('../migrations/0002_published_content_guards.sql', import.meta.url), 'utf8'));
   sql.exec(readFileSync(new URL('../dev/seed-synthetic.sql', import.meta.url), 'utf8'));
   const db = { prepare(query) {
     const stmt = sql.prepare(query);
@@ -95,6 +96,8 @@ test('published course identity and versioned lessons cannot be rewritten; super
   assert.throws(()=>sql.prepare("INSERT INTO academy_lessons(id,version_id,position,title,kind,body_text) VALUES('new','version-accountable-1',5,'Tampered','text','x')").run(),/cannot accept/);
   assert.throws(()=>sql.prepare("UPDATE academy_courses SET title='Rewritten' WHERE id='course-accountable'").run(),/immutable/);
   assert.throws(()=>sql.prepare("UPDATE academy_course_versions SET version_number=9 WHERE id='version-accountable-1'").run(),/immutable/);
+  assert.throws(()=>sql.prepare("UPDATE academy_lessons SET version_id='version-accountable-1',position=9 WHERE id='lesson-secret'").run(),/immutable/);
+  assert.throws(()=>sql.prepare("UPDATE academy_courses SET status='draft' WHERE id='course-accountable'").run(),/cannot return/);
   sql.prepare("UPDATE academy_course_versions SET status='superseded' WHERE id='version-accountable-1'").run();
   assert.equal((await call('/api/my/courses/version-accountable-1/progress','synthetic-user-a')).status,200);
   assert.equal((await call('/api/catalog',null)).data.courses.length,0);

@@ -1,5 +1,6 @@
 // Generates an UNTRACKED config for a distinct, unrouted Academy staging Worker.
 // It does not connect to Cloudflare, create a D1, deploy a Worker, or update DNS.
+import { isAbsolute } from 'node:path';
 import { readFile, writeFile } from 'node:fs/promises';
 
 const cloudflareAccountId=(process.env.ACADEMY_CLOUDFLARE_ACCOUNT_ID || '').trim().toLowerCase();
@@ -28,6 +29,7 @@ const staging={
   compatibility_date:'2026-10-30',
   compatibility_flags:['nodejs_compat'],
   workers_dev:false,
+  preview_urls:false,
   vars:{
     ACADEMY_ENABLED:'false',
     ACADEMY_ORIGIN:'https://learn-staging.irenicconsulting.com'
@@ -45,6 +47,9 @@ const staging={
   }]
 };
 
-await writeFile(new URL('../wrangler.staging.local.jsonc',import.meta.url),JSON.stringify(staging,null,2)+'\n',{flag:'w'});
+const output=process.env.ACADEMY_STAGING_OUTPUT || new URL('../wrangler.staging.local.jsonc',import.meta.url);
+if (typeof output === 'string' && (!isAbsolute(output) || !output.endsWith('.jsonc')))
+  throw new Error('Staging output must be an absolute .jsonc path');
+await writeFile(output,JSON.stringify(staging,null,2)+'\n',{flag:'wx'});
 console.log('Created an untracked, unrouted Academy staging configuration; ACADEMY_ENABLED=false.');
 console.log('NO Cloudflare resources were created, no migration was run, and nothing was deployed.');

@@ -1,14 +1,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync, unlinkSync } from 'node:fs';
+import { readFileSync, existsSync, unlinkSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { after } from 'node:test';
 import { randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 
 const executable=new URL('../scripts/prepare-staging.mjs',import.meta.url);
-const output=new URL('../wrangler.staging.local.jsonc',import.meta.url);
+const temp=mkdtempSync(join(tmpdir(),'academy-staging-test-'));
+const output=join(temp,'staging.jsonc');
+after(()=>rmSync(temp,{recursive:true,force:true}));
 const rootConfig=JSON.parse(readFileSync(new URL('../../../wrangler.jsonc',import.meta.url),'utf8'));
 const env={
   ...process.env,
+  ACADEMY_STAGING_OUTPUT:output,
   ACADEMY_CLOUDFLARE_ACCOUNT_ID:'a'.repeat(32),
   ACADEMY_DEV_D1_ID:randomUUID()
 };
@@ -28,6 +34,10 @@ test('staging config uses distinct D1, leaves accounts disabled, and never route
     assert.equal(config.d1_databases[0].database_id,env.ACADEMY_DEV_D1_ID);
     assert.equal(config.vars.ACADEMY_ENABLED,'false');
     assert.equal(config.workers_dev,false);
+    assert.equal(config.preview_urls,false);
+    const unchanged=readFileSync(output,'utf8');
+    assert.notEqual(run().status,0,'Must not overwrite an existing config');
+    assert.equal(readFileSync(output,'utf8'),unchanged);
     assert.ok(!('routes' in config));
     assert.ok(!('route' in config));
     assert.ok(!('secrets' in config));

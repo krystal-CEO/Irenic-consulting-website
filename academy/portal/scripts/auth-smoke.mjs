@@ -6,8 +6,8 @@ const email='ci-learner@example.invalid';
 const password='Synthetic-CI-Password-2026!';
 const nextPassword='Synthetic-CI-New-Password-2026!';
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-async function req(path,{method='GET',body,cookie,redirect='manual'}={}) {
-  const options={method,redirect,headers:{'cf-connecting-ip':'192.0.2.10',...(cookie?{cookie}:{}),...(body?{'content-type':'application/json',origin:base}:{})}};
+async function req(path,{method='GET',body,cookie,redirect='manual',origin=base}={}) {
+  const options={method,redirect,headers:{'cf-connecting-ip':'192.0.2.10',...(cookie?{cookie}:{}),...(body?{'content-type':'application/json',origin}:{})}};
   if(body)options.body=JSON.stringify(body);
   const r=await fetch(path.startsWith('http')?path:base+path,options);
   const data=await r.clone().json().catch(()=>null);
@@ -63,6 +63,8 @@ assert.ok([200,302,303,307,308].includes(verified.status),'Email verification fa
 const signed=await req('/api/auth/sign-in/email',{method:'POST',body:{email,password}});
 assert.equal(signed.status,200,'Verified learner cannot sign in');
 assert.ok(signed.cookie,'Sign-in did not issue a session cookie');
+assert.match(signed.response.headers.get('set-cookie'),/HttpOnly/i);
+assert.match(signed.response.headers.get('set-cookie'),/SameSite=Lax/i);
 const me=await req('/api/me',{cookie:signed.cookie});
 assert.equal(me.status,200,'Cookie-backed Academy session did not work');
 assert.equal(me.data.user.email,email);
@@ -125,6 +127,14 @@ assert.equal(rejectedPage.searchParams.get('token'),null);
 const rejectedReset=await req('/api/auth/reset-password',{method:'POST',body:{newPassword:password,token:expiredToken}});
 assert.equal(rejectedReset.status,400,'Expired reset token changed the password');
 assert.equal(rejectedReset.data.code,'INVALID_TOKEN');
-assert.equal((await req('/api/auth/sign-in/email',{method:'POST',body:{email,password:nextPassword}})).status,200,'Rejected expired reset changed the password');
+const finalLogin=await req('/api/auth/sign-in/email',{method:'POST',body:{email,password:nextPassword}});
+assert.equal(finalLogin.status,200,'Rejected expired reset changed the password');
+assert.equal((await req('/api/auth/sign-in/email',{method:'POST',body:{email,password:nextPassword}})).status,429,'Sixth sign-in was not rate limited');
+assert.equal((await req('/api/auth/sign-out',{method:'POST',body:{},cookie:finalLogin.cookie,origin:'https://attacker.example'})).status,403,'Cross-origin sign-out accepted');
+assert.equal((await req('/api/me',{cookie:finalLogin.cookie})).status,200,'Rejected CSRF request changed session');
+assert.equal((await req('/api/auth/sign-out',{method:'POST',body:{},cookie:finalLogin.cookie})).status,200);
+assert.equal((await req('/api/me',{cookie:finalLogin.cookie})).status,401,'Signed-out session still accepted');
+assert.equal((await req('/api/auth/reset-password',{method:'POST',body:{newPassword:password,token}})).status,400,'Used reset token was reusable');
+console.log('PASS: cookie flags, database login rate limit, cross-origin rejection, sign-out and reset-token reuse');
 console.log('PASS: expired email verification, session and password-reset tokens rejected');
 console.log('PASS: real Better Auth + local D1 signup, verification, session, enrollment isolation and password reset');

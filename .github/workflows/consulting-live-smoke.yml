@@ -1,0 +1,24 @@
+name: Consulting live website smoke (read-only)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/live-smoke.mjs'
+      - '.github/workflows/consulting-live-smoke.yml'
+  push:
+    branches: [consulting/post-launch-smoke-20261106]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check published pages and public inquiry status
+        run: node scripts/live-smoke.mjs

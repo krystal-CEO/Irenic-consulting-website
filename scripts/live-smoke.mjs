@@ -56,6 +56,11 @@ try {
   assert.ok(config.siteKey.length>0,'Turnstile site key missing');
   audit.push('PASS /api/inquiry-config (direct submission available; key redacted)');
 } catch(e) {errors++;audit.push('FAIL /api/inquiry-config: '+e.message);}
+try {
+  const {body} = await get('/');
+  console.log('Cloudflare Web Analytics beacon: ' + (/static\\.cloudflareinsights\\.com\\/beacon\\.min\\.js/.test(body) ? 'present in public HTML' : 'not found in public HTML'));
+  console.log('Google Search Console verification meta: ' + (/name="google-site-verification"/.test(body) ? 'present in public HTML' : 'not found in public HTML'));
+} catch(error) {console.log('Could not inspect public analytics markup: '+error.message);}
 for(const line of audit) console.log(line);
 if (errors) {console.error(`Public smoke test failed: ${errors} check(s).`); process.exitCode=1;}
 else console.log('Public smoke test passed. This does NOT test real browser Turnstile completion, D1 saving, Resend, or inbox receipt.');

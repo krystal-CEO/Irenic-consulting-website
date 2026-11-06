@@ -96,4 +96,35 @@ const newLogin=await req('/api/auth/sign-in/email',{method:'POST',body:{email,pa
 assert.equal(newLogin.status,200,'New password login failed');
 const invalidated=await req('/api/me',{cookie:signed.cookie});
 assert.equal(invalidated.status,401,'Old session was not revoked after password reset');
+// An authentic signature with a past expiry must still be rejected.
+const expiredEmail=await req('/__test__/expire',{method:'POST',body:{kind:'email'}});
+assert.equal(expiredEmail.status,200);
+const expiredVerify=await req('/api/auth/verify-email?token='+encodeURIComponent(expiredEmail.data.token));
+assert.equal(expiredVerify.status,401,'Expired email verification token was accepted');
+
+assert.equal((await req('/api/me',{cookie:newLogin.cookie})).status,200);
+const expiredSession=await req('/__test__/expire',{method:'POST',body:{kind:'session'}});
+assert.equal(expiredSession.status,200);
+assert.ok(expiredSession.data.changed>0,'No session was expired');
+assert.equal((await req('/api/me',{cookie:newLogin.cookie})).status,401,'Expired session was accepted');
+
+const resetCount=(await outbox()).length;
+assert.equal((await req('/api/auth/request-password-reset',{method:'POST',body:{email,redirectTo:base+'/reset-password.html'}})).status,200);
+const expiredResetLink=urlIn(await waitForMessage('reset',resetCount));
+const validEntrance=await req(expiredResetLink);
+const validPage=new URL(validEntrance.response.headers.get('location'),base);
+const expiredToken=validPage.searchParams.get('token');
+assert.ok(expiredToken,'Fresh reset token missing');
+const expiredReset=await req('/__test__/expire',{method:'POST',body:{kind:'reset',token:expiredToken}});
+assert.equal(expiredReset.status,200);
+assert.equal(expiredReset.data.changed,1,'Reset fixture did not expire exactly one token');
+const expiredEntrance=await req(expiredResetLink);
+const rejectedPage=new URL(expiredEntrance.response.headers.get('location'),base);
+assert.equal(rejectedPage.searchParams.get('error'),'INVALID_TOKEN');
+assert.equal(rejectedPage.searchParams.get('token'),null);
+const rejectedReset=await req('/api/auth/reset-password',{method:'POST',body:{newPassword:password,token:expiredToken}});
+assert.equal(rejectedReset.status,400,'Expired reset token changed the password');
+assert.equal(rejectedReset.data.code,'INVALID_TOKEN');
+assert.equal((await req('/api/auth/sign-in/email',{method:'POST',body:{email,password:nextPassword}})).status,200,'Rejected expired reset changed the password');
+console.log('PASS: expired email verification, session and password-reset tokens rejected');
 console.log('PASS: real Better Auth + local D1 signup, verification, session, enrollment isolation and password reset');

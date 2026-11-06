@@ -1,0 +1,18 @@
+name: Search Console public tag verification
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/check-live-gsc.mjs'
+      - '.github/workflows/verify-live-gsc.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/check-live-gsc.mjs

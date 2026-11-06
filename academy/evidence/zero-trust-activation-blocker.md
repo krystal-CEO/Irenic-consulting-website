@@ -1,9 +1,19 @@
-# Private testing activation check — November 6, 2026
+# Private testing activation status — November 6, 2026
 
-Confirmed GitHub Actions run 42238298183 passed for readiness commit 905831a194f88d010da7098441e853dfd7ef8d94.
+## Completed with owner approval
 
-Opened the connected account's Zero Trust onboarding and selected the advertised Free plan to inspect the final activation requirements. Checkout displays $0/month and protection for up to 50 users, but also requires agreement to Terms of Service/Privacy Policy and authorization to charge the saved payment method for usage exceeding free limits each month until cancellation.
+Krystal explicitly approved the checkout terms and potential usage charges after reviewing the $0 Zero Trust activation screen. Accepted the displayed Terms of Service/Privacy Policy and usage-charge authorization, then activated Zero Trust Free. Cloudflare confirmed Purchase complete and the subscription active, with a $0/month base price and up to 50 users. The Cloudflare One account overview now shows Zero Trust Free.
 
-Neither checkbox was selected. Activate Zero Trust Free was not pressed. No subscription was activated or payment authorized. No Access policy, Worker, remote database, DNS or email change was made.
+Enabled Authenticator application as an available Access MFA method. Global MFA enforcement remains OFF; account-wide block-traffic remains OFF. This enables a second-factor option without placing the existing websites behind Access. No personal authenticator enrollment or secret was handled.
 
-This is the concrete blocker for the proposed Access-protected remote test environment. The owner's explicit decision is required because existing instructions prohibit purchases/subscriptions and do not authorize usage-based card charges. The checkout was left open for owner review. Edge CPU suitability and remote restoration remain untested; do not report them as passing or substitute a public deployment.
+## Prepared but not saved
+
+Prepared a new self-hosted application for only irenic-academy-dev.krystal-146.workers.dev, named Irenic Academy development only, with a 30-minute application session and custom authenticator-app MFA with a one-hour authentication duration. Draft allow policy: Academy owner only, exact email krystal@irenix.org. No wildcard, whole-domain allow rule, bypass or account-wide access rule.
+
+The owner email/access grant awaits confirmation before Save policy/Create. The browser draft is not evidence that the application or policy exists. No Academy Worker has been deployed or made reachable.
+
+## Remaining checks
+
+After the owner access identity is confirmed and the protection is saved, verify denial and owner authentication/MFA before any reachable private test. Real edge CPU, remote schema/recovery and live HTTPS cookies remain untested. No existing remote database, DNS, email setting or live website was modified. No Workers paid upgrade was purchased.
+
+Prior local readiness CI passed: run 42238298183 for commit 905831a194f88d010da7098441e853dfd7ef8d94.

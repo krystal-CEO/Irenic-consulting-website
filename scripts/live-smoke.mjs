@@ -60,6 +60,8 @@ try {
   const {body} = await get('/');
   console.log('Cloudflare Web Analytics beacon: ' + (body.includes('static.cloudflareinsights.com/beacon.min.js') ? 'present in public HTML' : 'not found in public HTML'));
   console.log('Google Search Console verification meta: ' + (/name="google-site-verification"/.test(body) ? 'present in public HTML' : 'not found in public HTML'));
+  assert.ok(body.includes('<meta name="google-site-verification" content="h_3RAeYObf7QzdeH4UUwNLUyFu-AcfPAR8YaRc_3nO4">'), 'new Google verification tag not yet published on homepage');
+  audit.push('PASS Google Search Console verification token is publicly served');
 } catch(error) {console.log('Could not inspect public analytics markup: '+error.message);}
 for(const line of audit) console.log(line);
 if (errors) {console.error(`Public smoke test failed: ${errors} check(s).`); process.exitCode=1;}

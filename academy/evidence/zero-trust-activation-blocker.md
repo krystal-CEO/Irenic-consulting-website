@@ -1,29 +1,35 @@
 # Private testing activation status — November 6, 2026
 
-## Completed with owner approval
+## Authorized scope
 
-Krystal explicitly approved the Zero Trust checkout terms and potential usage charges. Cloudflare confirmed Zero Trust Free active, with a $0/month base price and up to 50 users. No Workers paid upgrade was purchased.
+Owner approved Zero Trust Free checkout terms and potential usage charges, confirmed krystal@irenix.org as sole test identity, and approved the private test stage. No public Academy launch, existing database changes, DNS/email changes, paid Workers upgrade or merge authorized.
 
-Enabled Authenticator application as an available Access MFA method. Global MFA enforcement and account-wide block-traffic remain OFF. No personal authenticator enrollment or secret was handled.
+## Saved protections
 
-Krystal confirmed krystal@irenix.org as the owner identity ("sure for now"). Saved the Academy owner only Allow policy and the Irenic Academy development only self-hosted application. Cloudflare displayed Application successfully configured. Reopened the saved application and policy to verify:
+Zero Trust Free active ($0/month base, up to 50 users). Global MFA enforcement and account-wide Worker protection remain OFF.
 
-- Destination: irenic-academy-dev.krystal-146.workers.dev, all paths, no wildcard.
-- Application ID: cdb44231-4e67-403d-bc47-45970b4d4015.
-- Policy ID: 64ee7477-dc04-4595-9509-2cb26a60cb97.
-- Exactly one Include rule: Emails = krystal@irenix.org. No broad domain, Everyone or Bypass rule.
-- Application session: 30 minutes; policy session: same as application.
-- Application custom MFA: Authenticator application, one-hour authentication duration.
-- Policy MFA override was not enabled.
+- Hostname application: Irenic Academy development only, cdb44231-4e67-403d-bc47-45970b4d4015; exact irenic-academy-dev.krystal-146.workers.dev, all paths; 30-minute session; custom authenticator MFA, one-hour duration.
+- Reusable policy: Academy owner only, 64ee7477-dc04-4595-9509-2cb26a60cb97; exactly one Include Emails rule for krystal@irenix.org, Allow. No domain-wide, Everyone or Bypass rule.
+- Policy strengthened before Worker creation: explicit 30-minute session, custom MFA override requiring Authenticator application for one hour. Save confirmed. This policy supersedes longer application session defaults.
 
-## Reachability check and limits
+## Private placeholder deployment and observed checks
 
-Navigated to https://irenic-academy-dev.krystal-146.workers.dev after saving. The page returned "There is nothing here yet", consistent with no deployed Academy Worker. It did not show an Access login challenge. Saved configuration is therefore NOT proof that edge Access enforcement, owner login, MFA enrollment or denial of other identities works. Those remain required before any private test is considered protected.
+Created only irenic-academy-dev using Cloudflare's Hello World template. Before clicking Deploy selected Protect with Cloudflare Access, All traffic, and existing Academy owner only policy. Worker creation application session selected one hour (minimum offered); reusable policy sets 30 minutes.
 
-No Academy Worker was deployed. No existing remote database, DNS, email setting or live website was modified. PR remains draft and unmerged.
+Deployment version prefix: 0b778760. Dashboard reports Ready, previews disabled, zero bindings, no custom domains or routes. No Academy source, secrets, mail adapter, learner content or database connection was deployed.
+
+Worker Access tab confirms All traffic, Require login on every URL: production and previews, and exactly Academy owner only / krystal@irenix.org / Allow. Linked Worker Access application: 313e9d45-7b7b-405c-b49c-6aa58b6cc16f. Existing hostname protection also detected; hostname policies take precedence.
+
+Browser navigation to https://irenic-academy-dev.krystal-146.workers.dev now displays Log in to Irenic Academy development only rather than Hello World. Selected the Cloudflare identity provider using the owner's existing browser session. It reached No authentication methods set up with Setup MFA; it did not reach Worker content. This verifies an unauthenticated challenge and that the owner flow currently stops at required MFA enrollment. It does not establish completed MFA or successful post-MFA access.
+
+Left that screen open for owner handoff before generating or entering an authenticator credential. No authenticator secret or recovery code was handled.
 
 ## Remaining checks
 
-Verify the workers.dev Access integration and unauthenticated denial in a controlled private test, then owner login and personal MFA enrollment. Do not expose Academy content before protection is proven. Real edge CPU, remote schema/recovery and live HTTPS cookies remain untested. Existing database protection and no-public-deployment restrictions remain in effect.
+Owner must enroll their personal authenticator and complete login. Then verify successful access and session behavior, test denial for unauthorized identities without granting any additional identity, and proceed with a reviewed synthetic-only private test build. Password hashing CPU on the actual edge, remote schema/recovery on a disposable test database, and live HTTPS auth cookies remain untested. Hello World's performance is not evidence of Better Auth CPU suitability.
 
-Prior local readiness CI passed: run 42238298183 for commit 905831a194f88d010da7098441e853dfd7ef8d94. This documentation update does not replace remote testing.
+No existing remote database, DNS, email setting or live consulting website was modified. No public deployment; only the Access-protected placeholder exists. PR remains draft and unmerged.
+
+Prior local readiness CI passed: run 42238298183 for code commit 905831a194f88d010da7098441e853dfd7ef8d94. This evidence update does not replace remote tests.
+
+Reference checked: https://developers.cloudflare.com/workers/configuration/cloudflare-access/ (single Worker All traffic protection and hostname precedence).

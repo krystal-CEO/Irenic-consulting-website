@@ -9,6 +9,7 @@ const origin='https://irenicconsulting.com';
 const pages=['/','/services/','/workshops/','/about/','/contact/','/privacy/','/academy/','/organizational-assessments/'];
 const viewports=[{width:320,height:760},{width:390,height:844},{width:768,height:900},{width:1440,height:900}];
 const errors=[];
+async function run(){
 const browser=await chromium.launch({headless:true,executablePath:chrome,args:['--no-sandbox']});
 try {
 for(const size of viewports) {
@@ -45,3 +46,6 @@ for(const size of viewports) {
 } finally {await browser.close();}
 if(errors.length){console.error(errors.join('\n'));process.exitCode=1;}
 else console.log('Responsive smoke passed at 320, 390, 768, 1440 px. Does not submit inquiries.');
+
+}
+run().catch(e=>{console.error(e);process.exitCode=1;});

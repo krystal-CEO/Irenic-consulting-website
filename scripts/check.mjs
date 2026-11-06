@@ -22,6 +22,9 @@ for (const file of files.filter(x => x.endsWith('.html'))) {
   assert.match(html, /<meta name="description" content="[^\"]+"/);
   const schema = html.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)[1];
   assert.equal(JSON.parse(schema).email, 'info@irenicconsulting.com');
+  assert.ok(!('telephone' in JSON.parse(schema)), `${file}: no phone in organization schema`);
+  assert.ok(!/href="tel:/i.test(html), `${file}: no phone links`);
+  assert.ok(!/\(928\) 316-3388|\+1-928-316-3388|\+19283163388/.test(html), `${file}: no former consulting phone`);
   const hash = createHash('sha256').update(schema).digest('base64');
   assert.ok(headers.includes(`'sha256-${hash}'`), `${file}: CSP hash`);
   for (const m of html.matchAll(/(?:href|src)="([^\"]+)"/g)) {
@@ -42,7 +45,7 @@ assert.equal(url.searchParams.get('subject'), draft.subject);
 assert.equal(url.searchParams.get('body'), draft.body);
 assert.ok(draft.body.includes('Questions? #1: workload + boundaries\nNext line.'));
 const contact = await readFile(path.join(root, 'contact/index.html'), 'utf8');
-assert.ok(contact.includes('Nothing is submitted by completing this form.'));
+assert.ok(contact.includes('Direct submission is available when verification loads.'));
 assert.match(contact, /<input id="email"[^>]+type="email"[^>]+required/);
 assert.match(contact, /<textarea id="message"[^>]+maxlength="2000"[^>]+required/);
 assert.ok(!contact.includes('<form action='));
@@ -55,4 +58,28 @@ assert.deepEqual(serviceChoices, [
   'Organizational assessment', 'Ongoing consulting', 'Help choosing the right approach'
 ], 'Every service must be a selectable option so required form validation can pass');
 
+const academy = await readFile(path.join(root, 'academy/index.html'), 'utf8');
+assert.match(academy, /Coming soon/i);
+assert.match(academy, /Course enrollment is not open/);
+assert.match(academy, /CE approvals are not yet available|credit eligibility will be published only when confirmed/);
+assert.ok(!/Enroll now|Buy now|Register now/i.test(academy), 'Academy must not offer unapproved enrollment');
+const assessment = await readFile(path.join(root, 'organizational-assessments/index.html'), 'utf8');
+assert.match(assessment, /organizational assessment/i);
+assert.match(assessment, /defined in|agreed in|determined in the proposal/i);
+const home = await readFile(path.join(root, 'index.html'), 'utf8');
+assert.match(home, /Who we serve/);
+assert.match(home, /Healthcare organizations/);
+assert.match(home, /Nonprofits/);
+const about = await readFile(path.join(root, 'about/index.html'), 'utf8');
+assert.match(about, /collaborative|Collaborative/);
+assert.match(about, /Ph\.D\. candidate/);
+assert.ok(!about.includes('class="initials"'), 'About page should not center founder initials or portrait');
+const workshops = await readFile(path.join(root, 'workshops/index.html'), 'utf8');
+assert.match(workshops, /Best for:/);
+assert.match(workshops, /Typical format:/);
+for (const route of ['/academy/','/organizational-assessments/']) {
+  assert.ok((await readFile(path.join(root, 'sitemap.xml'), 'utf8')).includes(`<loc>https://irenicconsulting.com${route}</loc>`));
+}
+assert.ok(!/class="initials"/.test(home), 'Homepage should not focus on founder initials');
+assert.ok(!/href="tel:/.test(home + about + academy + assessment), 'Consulting must use email and contact form');
 console.log(`Checked ${htmlCount} pages: routes, anchors, assets, schema, CSP, and inquiry encoding.`);

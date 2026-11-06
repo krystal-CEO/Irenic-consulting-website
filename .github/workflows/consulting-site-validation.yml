@@ -1,0 +1,42 @@
+name: Consulting website validation (no deployment)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/**'
+      - 'src/**'
+      - 'automation/**'
+      - 'README.md'
+      - '.github/workflows/consulting-site-validation.yml'
+  push:
+    branches: [consulting/email-form-only-contact-20261105]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  site-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout site candidate
+        uses: actions/checkout@v4
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm supported Node runtime
+        run: node --version
+      - name: Build static site
+        run: npm run build
+      - name: Check generated pages, navigation, CSP, and inquiry
+        run: npm run check
+      - name: Validate Cloudflare inquiry backend with synthetic data
+        run: node automation/check.mjs
+      - name: Confirm Academy development not included in production build
+        run: |
+          test ! -d dist/academy/portal
+          test ! -f dist/academy/portal/index.html
+          test -f dist/academy/index.html
+          test ! -f .dev.vars

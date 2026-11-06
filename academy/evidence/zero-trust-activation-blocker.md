@@ -33,3 +33,9 @@ No existing remote database, DNS, email setting or live consulting website was m
 Prior local readiness CI passed: run 42238298183 for code commit 905831a194f88d010da7098441e853dfd7ef8d94. This evidence update does not replace remote tests.
 
 Reference checked: https://developers.cloudflare.com/workers/configuration/cloudflare-access/ (single Worker All traffic protection and hostname precedence).
+
+## MFA enrollment prerequisite fixed
+
+Owner reported Setup MFA led to App Launcher disabled/NoAuth page. Access settings confirmed App Launcher had no associated policy. Created a separate Allow policy, Academy owner launcher enrollment only (ae7acdc5-450b-47b7-b655-aeae93d2ed4b), with exactly Emails = krystal@irenix.org and 30-minute policy session. Attached only to App Launcher, also with 30-minute application session; Cloudflare confirmed Application successfully configured. No MFA override on this enrollment policy; it allows initial authenticated owner enrollment without requiring an authenticator that does not yet exist. The Academy owner only policy and both Academy application protections were not changed.
+
+Reloaded owner's blocked launcher tab; it now displays Secure your account with MFA and Set up authenticator application MFA. Left this screen open for the owner to create their personal credential. Did not click into credential creation or capture any enrollment secret. Enrollment completion remains pending. No live website, database, DNS or email changes.

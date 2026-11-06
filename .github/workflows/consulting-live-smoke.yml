@@ -1,0 +1,66 @@
+name: Consulting live website smoke (read-only)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/live-smoke.mjs'
+      - 'scripts/mail-dns-diagnostic.mjs'
+      - 'scripts/browser-qa.cjs'
+      - '.github/workflows/consulting-live-smoke.yml'
+  push:
+    branches: [consulting/post-launch-smoke-20261106]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check published pages and public inquiry status
+        run: node scripts/live-smoke.mjs
+      - name: Inspect public Consulting email DNS
+        run: node scripts/mail-dns-diagnostic.mjs
+  verification-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate optional Search Console and Cloudflare analytics markup
+        env:
+          GOOGLE_SITE_VERIFICATION: synthetic_verification_token_0123456789
+          CLOUDFLARE_WEB_ANALYTICS_TOKEN: 1234567890abcdef1234567890abcdef
+        run: |
+          npm run build
+          npm run check
+          grep -q 'name="google-site-verification"' dist/index.html
+          grep -q 'static.cloudflareinsights.com/beacon.min.js' dist/index.html
+          grep -q 'cloudflareinsights.com' dist/_headers
+
+
+  responsive-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install temporary browser test package
+        run: npm install --prefix /tmp/consulting-qa --no-audit --no-fund --package-lock=false playwright@1.56.1
+      - name: Check installed Chrome
+        run: command -v google-chrome || command -v chromium
+      - name: Check responsive public pages and menus
+        env:
+          NODE_PATH: /tmp/consulting-qa/node_modules
+        run: node scripts/browser-qa.cjs

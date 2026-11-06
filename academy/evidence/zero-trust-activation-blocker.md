@@ -39,3 +39,9 @@ Reference checked: https://developers.cloudflare.com/workers/configuration/cloud
 Owner reported Setup MFA led to App Launcher disabled/NoAuth page. Access settings confirmed App Launcher had no associated policy. Created a separate Allow policy, Academy owner launcher enrollment only (ae7acdc5-450b-47b7-b655-aeae93d2ed4b), with exactly Emails = krystal@irenix.org and 30-minute policy session. Attached only to App Launcher, also with 30-minute application session; Cloudflare confirmed Application successfully configured. No MFA override on this enrollment policy; it allows initial authenticated owner enrollment without requiring an authenticator that does not yet exist. The Academy owner only policy and both Academy application protections were not changed.
 
 Reloaded owner's blocked launcher tab; it now displays Secure your account with MFA and Set up authenticator application MFA. Left this screen open for the owner to create their personal credential. Did not click into credential creation or capture any enrollment secret. Enrollment completion remains pending. No live website, database, DNS or email changes.
+
+## Owner enrollment verified
+
+After owner reported completion, browser displayed MFA setup complete. Saved the default device display name; Account page then listed one Authenticator / TOTP device for krystal@irenix.org, created and last used November 6. No secret or OTP was read or entered by the agent.
+
+Navigated to the protected Academy Worker. Access now displays Authenticate your identity with a six-digit TOTP field; Worker content remains inaccessible pending that verification. Left the challenge open for owner entry. Enrollment is confirmed; successful post-MFA Worker access is still pending. This challenge is the application login check, not a request for a second authenticator.

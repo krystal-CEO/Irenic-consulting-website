@@ -45,3 +45,9 @@ Reloaded owner's blocked launcher tab; it now displays Secure your account with 
 After owner reported completion, browser displayed MFA setup complete. Saved the default device display name; Account page then listed one Authenticator / TOTP device for krystal@irenix.org, created and last used November 6. No secret or OTP was read or entered by the agent.
 
 Navigated to the protected Academy Worker. Access now displays Authenticate your identity with a six-digit TOTP field; Worker content remains inaccessible pending that verification. Left the challenge open for owner entry. Enrollment is confirmed; successful post-MFA Worker access is still pending. This challenge is the application login check, not a request for a second authenticator.
+
+## Owner post-MFA access passed
+
+Owner completed the six-digit TOTP challenge and reported done. Observed the same browser tab at https://irenic-academy-dev.krystal-146.workers.dev/ displaying Hello World!, the deployed placeholder. This completes the observed owner flow: Access challenge, Cloudflare identity provider login, required authenticator enrollment, TOTP challenge, successful Worker response. No OTP or authenticator secret was handled by the agent.
+
+This is a successful owner Access/MFA test only. It is not an Academy learner login test or a complete security audit. Unauthorized authenticated-identity denial, timed session expiration, Better Auth edge CPU and HTTPS cookie checks, and disposable remote recovery remain outstanding. No additional remote mutations occurred during this verification.

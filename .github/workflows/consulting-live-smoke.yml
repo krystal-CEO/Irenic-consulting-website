@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/live-smoke.mjs'
+      - 'scripts/mail-dns-diagnostic.mjs'
       - '.github/workflows/consulting-live-smoke.yml'
   push:
     branches: [consulting/post-launch-smoke-20261106]
@@ -22,3 +23,5 @@ jobs:
           node-version: '22'
       - name: Check published pages and public inquiry status
         run: node scripts/live-smoke.mjs
+      - name: Inspect public Consulting email DNS
+        run: node scripts/mail-dns-diagnostic.mjs

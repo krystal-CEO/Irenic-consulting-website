@@ -69,6 +69,8 @@ assert.match(assessment, /defined in|agreed in|determined in the proposal/i);
 const home = await readFile(path.join(root, 'index.html'), 'utf8');
 assert.match(home, /Who we serve/);
 assert.match(home, /Healthcare organizations/);
+assert.match(home, /<meta name="google-site-verification" content="h_3RAeYObf7QzdeH4UUwNLUyFu-AcfPAR8YaRc_3nO4">/, 'new Consulting property verification must be published');
+assert.match(home, /<meta name="google-site-verification" content="Ch-D858A3XiAskIM9_9wdm-N99x9_Q-M2Twp6oEwoRo">/, 'existing verification tag must not be lost');
 assert.match(home, /Nonprofits/);
 const about = await readFile(path.join(root, 'about/index.html'), 'utf8');
 assert.match(about, /collaborative|Collaborative/);

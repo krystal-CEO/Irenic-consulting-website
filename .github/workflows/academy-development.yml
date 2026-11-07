@@ -1,0 +1,52 @@
+name: Academy development checks (no deployment)
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'academy/**'
+      - '.github/workflows/academy-development.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  academy-validation:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: academy/portal
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned dev dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Unit and local SQLite API tests
+        run: npm run check
+      - name: Create isolated local D1 and seed synthetic lessons
+        run: |
+          npx wrangler d1 migrations apply ACADEMY_DB --local --config wrangler.integration.jsonc
+          npx wrangler d1 execute ACADEMY_DB --local --config wrangler.integration.jsonc --file dev/outbox.sql
+          npx wrangler d1 execute ACADEMY_DB --local --config wrangler.integration.jsonc --file dev/seed-synthetic.sql
+      - name: Exercise real Better Auth login, verification, session and reset locally
+        run: |
+          npx wrangler dev --local --config wrangler.integration.jsonc --port 8787 --ip 127.0.0.1 > "$RUNNER_TEMP/academy-local-worker.log" 2>&1 &
+          worker_pid=$!
+          trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
+          if ! node scripts/auth-smoke.mjs; then
+            echo "Synthetic local Worker diagnostics:"
+            tail -n 80 "$RUNNER_TEMP/academy-local-worker.log"
+            exit 1
+          fi
+      - name: Dry-run Worker bundle (no deploy)
+        run: npm run validate:worker
+      - name: Confirm production settings untouched
+        run: |
+          test ! -f .dev.vars
+          test ! -f .env
+          test -f .wrangler/academy-dry-run/index.js

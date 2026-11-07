@@ -1,0 +1,239 @@
+{
+  "generator": "auth@1.7.14",
+  "runtime": "better-auth@1.7.14",
+  "generated_sql_sha256": "55995dca64087f9b5a184d60c324be6a7793d4c2b0e169690473a707a0b61e80",
+  "database": "two temporary in-memory SQLite databases; no remote access",
+  "tables": {
+    "user": {
+      "same_columns": true,
+      "column_differences": {
+        "emailVerified": {
+          "generated": [
+            "INTEGER",
+            1,
+            null,
+            0
+          ],
+          "migration": [
+            "INTEGER",
+            1,
+            "0",
+            0
+          ]
+        },
+        "createdAt": {
+          "generated": [
+            "date",
+            1,
+            null,
+            0
+          ],
+          "migration": [
+            "INTEGER",
+            1,
+            null,
+            0
+          ]
+        },
+        "updatedAt": {
+          "generated": [
+            "date",
+            1,
+            null,
+            0
+          ],
+          "migration": [
+            "INTEGER",
+            1,
+            null,
+            0
+          ]
+        }
+      },
+      "same_foreign_keys": true,
+      "same_index_columns_and_uniqueness": true
+    },
+    "session": {
+      "same_columns": true,
+      "column_differences": {
+        "expiresAt": {
+          "generated": [
+            "date",
+            1,
+            null,
+            0
+          ],
+          "migration": [
+            "INTEGER",
+            1,
+            null,
+            0
+          ]
+        },
+        "createdAt": {
+          "generated": [
+            "date",
+            1,
+            null,
+            0
+          ],
+          "migration": [
+            "INTEGER",
+            1,
+            null,
+            0
+          ]
+        },
+        "updatedAt": {
+          "generated": [
+            "date",
+            1,
+            null,
+            0
+          ],
+          "migration": [
+            "INTEGER",
+            1,
+            null,
+            0
+          ]
+        }
+      },
+      "same_foreign_keys": true,
+      "same_index_columns_and_uniqueness": true
+    },
+    "account": {
+      "same_columns": true,
+      "column_differences": {
+        "accessTokenExpiresAt": {
+          "generated": [
+            "date",
+            0,
+            null,
+            0
+          ],
+          "migration": [
+            "INTEGER",
+            0,
+            null,
+            0
+          ]
+        },
+        "refreshTokenExpiresAt": {
+          "generated": [
+            "date",
+            0,
+            null,
+            0
+          ],
+          "migration": [
+            "INTEGER",
+            0,
+            null,
+            0
+          ]
+        },
+        "createdAt": {
+          "generated": [
+            "date",
+            1,
+            null,
+            0
+          ],
+          "migration": [
+            "INTEGER",
+            1,
+            null,
+            0
+          ]
+        },
+        "updatedAt": {
+          "generated": [
+            "date",
+            1,
+            null,
+            0
+          ],
+          "migration": [
+            "INTEGER",
+            1,
+            null,
+            0
+          ]
+        }
+      },
+      "same_foreign_keys": true,
+      "same_index_columns_and_uniqueness": true
+    },
+    "verification": {
+      "same_columns": true,
+      "column_differences": {
+        "expiresAt": {
+          "generated": [
+            "date",
+            1,
+            null,
+            0
+          ],
+          "migration": [
+            "INTEGER",
+            1,
+            null,
+            0
+          ]
+        },
+        "createdAt": {
+          "generated": [
+            "date",
+            1,
+            null,
+            0
+          ],
+          "migration": [
+            "INTEGER",
+            1,
+            null,
+            0
+          ]
+        },
+        "updatedAt": {
+          "generated": [
+            "date",
+            1,
+            null,
+            0
+          ],
+          "migration": [
+            "INTEGER",
+            1,
+            null,
+            0
+          ]
+        }
+      },
+      "same_foreign_keys": true,
+      "same_index_columns_and_uniqueness": true
+    },
+    "rateLimit": {
+      "same_columns": true,
+      "column_differences": {
+        "lastRequest": {
+          "generated": [
+            "bigint",
+            1,
+            null,
+            0
+          ],
+          "migration": [
+            "INTEGER",
+            1,
+            null,
+            0
+          ]
+        }
+      },
+      "same_foreign_keys": true,
+      "same_index_columns_and_uniqueness": true
+    }
+  }
+}
